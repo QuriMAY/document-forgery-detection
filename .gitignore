@@ -1,0 +1,78 @@
+# ── Python ───────────────────────────────────────────────────────────────────
+forgery_env/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+**/*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── Model weights ─────────────────────────────────────────────────────────────
+# Too large for git — copy manually or use DVC
+models/*.pt
+models/*.pth
+models/*.onnx
+
+# ── Datasets ──────────────────────────────────────────────────────────────────
+# All downloaded and generated data — too large for git
+data/real/
+data/forged/
+data/patches/
+data/generated/
+data/train/
+data/val/
+data/test/
+# data/sample_images/ is intentionally tracked (small reference images)
+
+# ── Runtime artifacts ─────────────────────────────────────────────────────────
+# temp/ contents ignored; .gitkeep preserved so the empty folder stays in git
+temp/*
+!temp/.gitkeep
+
+# TensorBoard event files
+runs/
+
+# Evaluation output — plots + report.txt from scripts/evaluate.py
+evaluation/
+
+# Demo output — dashboards from demo.py
+demo_output/
+
+# Log files — all scripts write into logs/<script_name>/
+logs/
+*.log
+
+# ── MLflow ────────────────────────────────────────────────────────────────────
+# Local experiment database and artifact store — never commit
+mlflow.db
+mlruns/
+mlartifacts/
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+# Local overrides (different ports, volumes, debug flags) — never commit
+docker-compose.override.yml
+
+# ── Grafana / Loki runtime volumes ────────────────────────────────────────────
+# Config files in monitoring/ ARE tracked; runtime data is not
+monitoring/grafana/data/
+monitoring/loki/data/
+
+# ── VS Code user settings ─────────────────────────────────────────────────────
+# Uncomment the line below to stop tracking VS Code settings
+# .vscode/
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+.env
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.bak

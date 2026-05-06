@@ -1,0 +1,47 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    backoff_config:
+      min_period: 500ms
+      max_period: 5m
+      max_retries: 10
+
+scrape_configs:
+  - job_name: forgery_detection_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          # Static label applied to every log line from this project
+          app: forgery-detection
+          # Glob that picks up ALL timestamped log files under logs/
+          __path__: /logs/**/*.log
+
+    pipeline_stages:
+      # ── Parse the log format written by src/utils.py ──────────────────────
+      # Format: 2026-05-06 10:19:35 | INFO     | train_classifier | message
+      - regex:
+          expression: '^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \| (?P<level>\w+)\s+\| (?P<script>\S+)\s*\| (?P<message>.+)$'
+
+      # ── Promote parsed fields to Loki labels ──────────────────────────────
+      # Only low-cardinality values should be labels (level has 4 values, script ~8)
+      - labels:
+          level:   # INFO / DEBUG / WARNING / ERROR
+          script:  # train_classifier / evaluate / kaggle_download / ...
+
+      # ── Parse the timestamp from the log line (not the file ingestion time) ─
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05'
+
+      # ── Drop noisy DEBUG lines from Loki (they stay in local .log files) ──
+      - match:
+          selector: '{level="DEBUG"}'
+          action: drop

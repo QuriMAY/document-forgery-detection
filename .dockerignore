@@ -1,0 +1,63 @@
+# ── Virtual environment ───────────────────────────────────────────────────────
+forgery_env/
+
+# ── Python cache ──────────────────────────────────────────────────────────────
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.so
+**/*.egg-info/
+
+# ── Datasets (mount at runtime via -v, never bake into image) ─────────────────
+data/real/
+data/forged/
+data/patches/
+data/generated/
+data/train/
+data/val/
+data/test/
+
+# ── Model weights (mount at runtime via -v ./models:/app/models) ──────────────
+models/*.pt
+models/*.pth
+models/*.onnx
+
+# ── MLflow & TensorBoard ──────────────────────────────────────────────────────
+mlflow.db
+mlruns/
+mlartifacts/
+runs/
+
+# ── Runtime artifacts ─────────────────────────────────────────────────────────
+logs/
+temp/
+evaluation/
+*.log
+
+# ── Development tools (not needed inside the container) ───────────────────────
+notebooks/
+.vscode/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ── Secrets (inject via docker run -e or docker-compose env_file) ─────────────
+.env
+
+# ── Git history ───────────────────────────────────────────────────────────────
+.git/
+.gitignore
+
+# ── Monitoring stack configs (not needed inside the API/MLflow containers) ───
+monitoring/
+
+# ── Documentation ─────────────────────────────────────────────────────────────
+STEPS.txt
+*.md
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.bak

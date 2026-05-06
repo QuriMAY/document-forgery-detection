@@ -1,0 +1,118 @@
+version: "3.8"
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Document Forgery Detection — Full Stack
+#
+#  DO NOT run docker-compose up directly.
+#  Use:  make up
+#
+#  Services:
+#    api      → http://localhost:8000   (Forgery Detection REST API)
+#    mlflow   → http://localhost:5000   (Experiment tracking UI)
+#    grafana  → http://localhost:3000   (Log visualization)
+#    loki     → internal only           (Log storage)
+#    promtail → internal only           (Log shipper)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── 1. Forgery Detection API ───────────────────────────────────────────────
+  api:
+    build: .
+    container_name: forgery_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── 2. MLflow Experiment Tracking UI ──────────────────────────────────────
+  # Reads mlflow.db created on the host by train_classifier.py
+  # touch mlflow.db must run before docker-compose up (handled by `make up`)
+  mlflow:
+    build: .
+    container_name: forgery_mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlflow.db:/workspace/mlflow.db
+      - ./mlartifacts:/workspace/mlartifacts
+    command: >
+      mlflow ui
+        --backend-store-uri  sqlite:////workspace/mlflow.db
+        --default-artifact-root /workspace/mlartifacts
+        --host 0.0.0.0
+        --port 5000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  # ── 3. Loki (log storage) ──────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: forgery_loki
+    expose:
+      - "3100"         # internal only — accessed by Promtail and Grafana
+    volumes:
+      - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── 4. Promtail (log shipper) ──────────────────────────────────────────────
+  # Tails ./logs/**/*.log and ships them to Loki with level + script labels
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: forgery_promtail
+    volumes:
+      - ./monitoring/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - ./logs:/logs:ro
+    command: -config.file=/etc/promtail/config.yaml
+    restart: unless-stopped
+    depends_on:
+      loki:
+        condition: service_healthy
+
+  # ── 5. Grafana (log visualization UI) ─────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: forgery_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_FEATURE_TOGGLES_ENABLE=lokiLive
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    restart: unless-stopped
+    depends_on:
+      loki:
+        condition: service_healthy
+
+# ─────────────────────────────────────────────────────────────────────────────
+
+volumes:
+  loki_data:
+  grafana_data:

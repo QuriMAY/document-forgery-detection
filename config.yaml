@@ -1,0 +1,31 @@
+ela:
+  quality: 90
+  amplification: 15
+  threshold: 0.1
+
+classifier:
+  backbone: resnet18        # resnet18 (fastest, good for CPU) | resnet50 | resnet101
+  num_classes: 2
+  image_size: 224
+  batch_size: 16            # 16 is safe for CPU; raise to 32+ if you have a GPU
+  epochs: 15            # keep low for CPU; increase once you verify training works
+  lr: 0.001
+  weight_decay: 0.0001
+  patience: 10              # early stopping patience
+
+yolo:
+  base_model: yolov8s.pt   # yolov8n | yolov8s | yolov8m
+  epochs: 100
+  imgsz: 640
+  batch: 16
+  patience: 20
+
+data:
+  train_dir: data/train
+  val_dir: data/val
+  test_dir: data/test
+
+inference:
+  ela_weight: 0.35
+  classifier_weight: 0.65
+  forgery_threshold: 0.5
