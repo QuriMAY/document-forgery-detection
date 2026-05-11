@@ -1,0 +1,134 @@
+---
+title: REST API
+description: FastAPI endpoint for programmatic document forgery analysis.
+---
+
+**Base URL:** `http://localhost:8000`  
+**Interactive docs:** [localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+## POST /analyze
+
+Upload a document image for forgery analysis.
+
+### Request
+
+<ParamField body="file" type="file" required>
+  Document image to analyze. Accepted formats: JPEG, PNG, WebP. Maximum size: 10 MB.
+</ParamField>
+
+```bash
+curl -X POST http://localhost:8000/analyze \
+     -F "file=@document.jpg"
+```
+
+### Response
+
+<ResponseField name="status" type="string">
+  Always `"success"` on a successful request.
+</ResponseField>
+
+<ResponseField name="is_forged" type="boolean">
+  `true` if `forgery_probability` exceeds the configured threshold (default `0.5`).
+</ResponseField>
+
+<ResponseField name="forgery_probability" type="number">
+  Combined score from 0.0 (authentic) to 1.0 (forged).
+  `= 0.35 × ela_score + 0.65 × cnn_score`
+</ResponseField>
+
+<ResponseField name="confidence" type="string">
+  `"high"` | `"medium"` | `"low"` — based on distance from the 0.5 threshold.
+</ResponseField>
+
+<ResponseField name="scores" type="object">
+  Breakdown of individual scores.
+  - `ela` — Error Level Analysis score
+  - `classifier` — CNN model score (null if model not trained)
+  - `combined` — weighted final score
+</ResponseField>
+
+<ResponseField name="detections" type="object">
+  YOLO detection results.
+  - `signatures` — list of `{bbox, confidence}` (empty if YOLO not trained)
+  - `stamps` — list of `{bbox, confidence}`
+</ResponseField>
+
+<ResponseField name="suspicious_regions" type="array">
+  Top 5 high-ELA regions with `bbox` and `area` in pixels.
+</ResponseField>
+
+<ResponseField name="processing_time_ms" type="number">
+  Total analysis time in milliseconds.
+</ResponseField>
+
+```json
+{
+  "status": "success",
+  "is_forged": true,
+  "forgery_probability": 0.823,
+  "confidence": "high",
+  "scores": {
+    "ela": 0.312,
+    "classifier": 0.921,
+    "combined": 0.823
+  },
+  "detections": {
+    "signatures": [{"bbox": [120, 450, 380, 510], "confidence": 0.91}],
+    "stamps": []
+  },
+  "suspicious_regions": [{"bbox": [100, 200, 300, 350], "area": 30000}],
+  "processing_time_ms": 312.4
+}
+```
+
+### Confidence levels
+
+| Value | Gap from 0.5 | Meaning |
+|-------|-------------|---------|
+| `"high"` | > 0.30 | Very reliable verdict |
+| `"medium"` | 0.15 – 0.30 | Fairly confident |
+| `"low"` | < 0.15 | Borderline — inspect manually |
+
+### Errors
+
+| Code | Cause |
+|------|-------|
+| `415` | Unsupported file type |
+| `413` | File exceeds 10 MB |
+| `500` | Internal analysis error |
+
+---
+
+## GET /health
+
+```bash
+curl http://localhost:8000/health
+```
+
+```json
+{
+  "status": "running",
+  "models": {
+    "classifier": true,
+    "yolo": false
+  }
+}
+```
+
+---
+
+## Python client
+
+```python
+import requests
+
+with open("document.jpg", "rb") as f:
+    r = requests.post("http://localhost:8000/analyze", files={"file": f})
+
+result = r.json()
+print(f"Forged: {result['is_forged']}")
+print(f"Probability: {result['forgery_probability']:.1%}")
+print(f"Confidence: {result['confidence']}")
+```

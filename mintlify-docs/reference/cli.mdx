@@ -1,0 +1,105 @@
+---
+title: CLI Reference
+description: All commands in one place.
+---
+
+## make commands
+
+<CodeGroup>
+```bash Docker
+make up              # build + start all 6 services
+make down            # stop all services
+make restart         # down + up
+make status          # container health and ports
+make logs            # live tail of all container stdout
+make build           # force-rebuild API + demo images
+```
+
+```bash Training
+make download        # fetch Kaggle datasets
+make generate        # create 1000 synthetic forgeries
+make split           # 70/15/15 train/val/test split
+make train           # train CNN classifier
+make evaluate        # test-set metrics + MLflow upload
+```
+
+```bash Tools
+make demo            # static PNG dashboards → demo_output/
+make docs            # serve MkDocs docs → localhost:8080
+make venv            # create forgery_env/
+make install         # pip install -r requirements.txt
+```
+</CodeGroup>
+
+---
+
+## inference.py
+
+```bash
+# Single image
+python inference.py path/to/document.jpg
+
+# Entire folder
+python inference.py path/to/folder/
+
+# Save results to JSON
+python inference.py path/to/folder/ --output results.json
+
+# Save ELA visualization for each image
+python inference.py document.jpg --visualize
+```
+
+**Output format:**
+```
+document.jpg    FORGED ⚠  prob=0.823  ela=0.312  sigs=1  stamps=0
+contract.jpg    REAL   ✓  prob=0.134  ela=0.051  sigs=0  stamps=1
+```
+
+---
+
+## kaggle_download.py
+
+```bash
+python kaggle_download.py --all
+python kaggle_download.py --documents
+python kaggle_download.py --signatures
+python kaggle_download.py --all --limit 300
+python kaggle_download.py --all --skip slug/name
+```
+
+---
+
+## train_classifier.py
+
+```bash
+python train_classifier.py
+python train_classifier.py --device cpu
+python train_classifier.py --resume models/classifier.pth
+python train_classifier.py --config path/to/config.yaml
+```
+
+---
+
+## train_yolo.py
+
+```bash
+python train_yolo.py --data path/to/data.yaml
+python train_yolo.py --data path/to/data.yaml --device cpu
+```
+
+---
+
+## scripts/evaluate.py
+
+```bash
+python scripts/evaluate.py --test-dir data/test
+python scripts/evaluate.py --test-dir data/test --model models/classifier.pth
+```
+
+---
+
+## app.py
+
+```bash
+python app.py    # Gradio demo → http://localhost:7860
+```

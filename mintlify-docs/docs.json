@@ -1,0 +1,134 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Forgery Detection",
+  "colors": {
+    "primary": "#4F46E5",
+    "light": "#818CF8",
+    "dark": "#3730A3"
+  },
+  "favicon": "/logo/favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "introduction"
+            ]
+          },
+          {
+            "group": "Data Pipeline",
+            "pages": [
+              "data-pipeline/download",
+              "data-pipeline/generate",
+              "data-pipeline/prepare"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "getting-started/quickstart",
+              "getting-started/installation",
+              "getting-started/configuration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Training",
+        "groups": [
+          {
+            "group": "Training",
+            "pages": [
+              "training/classifier",
+              "training/yolo",
+              "training/mlflow"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Services",
+        "groups": [
+          {
+            "group": "Services",
+            "pages": [
+              "services/overview",
+              "services/api",
+              "services/demo",
+              "services/monitoring"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/architecture",
+              "reference/configuration",
+              "reference/cli",
+              "reference/troubleshooting"
+            ]
+          }
+        ]
+      }
+    ],
+    "global": {
+      "anchors": [
+        {
+          "anchor": "API Docs",
+          "href": "http://localhost:8000/docs",
+          "icon": "rectangle-terminal"
+        },
+        {
+          "anchor": "MLflow UI",
+          "href": "http://localhost:5000",
+          "icon": "chart-line"
+        },
+        {
+          "anchor": "Grafana",
+          "href": "http://localhost:3000",
+          "icon": "bars"
+        },
+        {
+          "anchor": "GitHub",
+          "href": "https://github.com/your-username/document-forgery-detection",
+          "icon": "github"
+        }
+      ]
+    }
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/your-username/document-forgery-detection"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get Started",
+      "href": "/getting-started/quickstart"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/your-username/document-forgery-detection"
+    }
+  }
+}

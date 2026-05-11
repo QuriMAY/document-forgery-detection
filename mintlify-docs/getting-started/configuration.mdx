@@ -1,0 +1,91 @@
+---
+title: Configuration
+description: All settings in one file — config.yaml.
+---
+
+All settings live in `config.yaml` at the project root. No environment variables needed for model settings.
+
+## Full config.yaml
+
+```yaml
+ela:
+  quality: 90         # Re-compression quality (70–95). Lower = more sensitive.
+  amplification: 15   # Brightness multiplier for the ELA map.
+  threshold: 0.1      # ELA score above this is flagged suspicious.
+
+classifier:
+  backbone: resnet18  # Model architecture (see table below).
+  num_classes: 2      # Always 2: real / forged.
+  image_size: 224     # Input resolution in pixels.
+  batch_size: 16      # Images per training step.
+  epochs: 15          # Total training epochs.
+  lr: 0.001           # Peak learning rate (OneCycleLR).
+  weight_decay: 0.0001
+  patience: 10        # Early stopping — epochs without improvement.
+
+yolo:
+  base_model: yolov8s.pt
+  epochs: 100
+  imgsz: 640
+  batch: 16
+  patience: 20
+
+data:
+  train_dir: data/train
+  val_dir:   data/val
+  test_dir:  data/test
+
+inference:
+  ela_weight:          0.35   # Weight of ELA in the combined score.
+  classifier_weight:   0.65   # Weight of CNN in the combined score.
+  forgery_threshold:   0.5    # Score above this → FORGED verdict.
+```
+
+---
+
+## CPU vs GPU settings
+
+<CardGroup cols={2}>
+  <Card title="CPU (default)" icon="microchip">
+    ```yaml
+    backbone: resnet18
+    batch_size: 16
+    epochs: 15
+    ```
+    Training time: ~30–60 min for 1 000 images
+  </Card>
+  <Card title="GPU (NVIDIA)" icon="bolt">
+    ```yaml
+    backbone: resnet50
+    batch_size: 32
+    epochs: 30
+    ```
+    Training time: ~10–20 min for 3 000 images
+  </Card>
+</CardGroup>
+
+Mixed precision (AMP) is enabled automatically when CUDA is detected.
+
+---
+
+## Backbone options
+
+| Backbone | Parameters | Speed | Accuracy |
+|----------|-----------|-------|----------|
+| `resnet18` | 11M | ⚡⚡⚡ | Good |
+| `resnet50` | 25M | ⚡⚡ | Better |
+| `resnet101` | 44M | ⚡ | Best |
+
+<Tip>
+  Always start with `resnet18` to verify your pipeline works end-to-end before committing to a long GPU run.
+</Tip>
+
+---
+
+## Adjusting the forgery threshold
+
+| `forgery_threshold` | Effect |
+|---------------------|--------|
+| `0.3` | Very sensitive — high recall, more false positives |
+| `0.5` | Balanced (default) |
+| `0.7` | Conservative — high precision, may miss forgeries |

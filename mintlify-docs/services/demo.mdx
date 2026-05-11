@@ -1,0 +1,69 @@
+---
+title: Demo App
+description: Gradio web interface for interactive document analysis.
+---
+
+**URL:** [localhost:7860](http://localhost:7860) — starts with `make up`.
+
+---
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Upload" icon="upload">
+    Drag-and-drop, click to browse, or paste from clipboard. JPEG, PNG, WebP.
+  </Card>
+  <Card title="Auto-analysis" icon="bolt">
+    Analysis triggers immediately on upload — no button click needed.
+  </Card>
+  <Card title="ELA visualisation" icon="eye">
+    Three-image gallery: Original · ELA heatmap · Suspicious regions overlay.
+  </Card>
+  <Card title="Interactive gauge" icon="gauge">
+    Plotly gauge with green/yellow/red zones and delta vs threshold.
+  </Card>
+</CardGroup>
+
+---
+
+## What the ELA map shows
+
+| Area | Meaning |
+|------|---------|
+| Dark | Compressed uniformly — likely original content |
+| Bright | Different compression history — possible editing |
+| Red boxes | Top suspicious regions found by contour analysis |
+
+---
+
+## Before vs after training
+
+| State | What you see |
+|-------|-------------|
+| Before `make train` | ELA score only. Sidebar: "⚠️ Run make train". |
+| After `make train` | Full ELA + CNN combined score and gauge. |
+| After `train_yolo.py` | Signature and stamp detection count appears. |
+
+---
+
+## Run locally without Docker
+
+```bash
+source forgery_env/bin/activate
+python app.py
+# Opens http://localhost:7860
+```
+
+---
+
+## Static PNG reports
+
+For presentations, reports, or GitHub screenshots:
+
+```bash
+make demo
+# Saves to demo_output/:
+#   dashboard_authentic.png
+#   dashboard_forged.png
+#   comparison.png
+```

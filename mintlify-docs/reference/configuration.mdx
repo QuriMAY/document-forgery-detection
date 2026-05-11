@@ -1,0 +1,85 @@
+---
+title: Configuration Reference
+description: Every key in config.yaml explained.
+---
+
+## ela
+
+<ParamField path="quality" type="integer" default="90">
+  JPEG re-compression quality (1–95). Lower values make ELA more sensitive but also more noisy.
+</ParamField>
+
+<ParamField path="amplification" type="integer" default="15">
+  Multiplier applied to the ELA difference map for visibility in the heatmap.
+</ParamField>
+
+<ParamField path="threshold" type="float" default="0.1">
+  ELA score above this value is considered suspicious when finding regions.
+</ParamField>
+
+---
+
+## classifier
+
+<ParamField path="backbone" type="string" default="resnet18">
+  Model architecture. Options: `resnet18` · `resnet50` · `resnet101`.
+  Use `resnet18` on CPU, `resnet50` on GPU.
+</ParamField>
+
+<ParamField path="image_size" type="integer" default="224">
+  Input resolution in pixels. Both dimensions are resized to this value.
+</ParamField>
+
+<ParamField path="batch_size" type="integer" default="16">
+  Images per training step. Lower on CPU (8–16), higher on GPU (32–64).
+</ParamField>
+
+<ParamField path="epochs" type="integer" default="15">
+  Maximum training epochs. Early stopping may exit before this.
+</ParamField>
+
+<ParamField path="lr" type="float" default="0.001">
+  Peak learning rate for OneCycleLR scheduler.
+</ParamField>
+
+<ParamField path="weight_decay" type="float" default="0.0001">
+  L2 regularisation strength.
+</ParamField>
+
+<ParamField path="patience" type="integer" default="10">
+  Number of epochs without validation loss improvement before early stopping triggers.
+</ParamField>
+
+---
+
+## yolo
+
+<ParamField path="base_model" type="string" default="yolov8s.pt">
+  Pretrained weights to fine-tune from. Options: `yolov8n.pt` · `yolov8s.pt` · `yolov8m.pt`.
+</ParamField>
+
+<ParamField path="epochs" type="integer" default="100">
+  Maximum YOLO training epochs.
+</ParamField>
+
+<ParamField path="imgsz" type="integer" default="640">
+  Input image size for YOLO detector.
+</ParamField>
+
+---
+
+## inference
+
+<ParamField path="ela_weight" type="float" default="0.35">
+  Weight of the ELA score in the combined verdict.
+  Must satisfy `ela_weight + classifier_weight = 1.0`.
+</ParamField>
+
+<ParamField path="classifier_weight" type="float" default="0.65">
+  Weight of the CNN score in the combined verdict.
+</ParamField>
+
+<ParamField path="forgery_threshold" type="float" default="0.5">
+  Combined score above this value triggers a FORGED verdict.
+  Lower = more sensitive, Higher = more conservative.
+</ParamField>

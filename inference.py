@@ -12,40 +12,15 @@ import json
 import logging
 from pathlib import Path
 
-from src.ela import ELAAnalyzer
-from src.detector import DocumentDetector
+from src.analysis import analyze
 from src.classifier import ForgeryClassifier
+from src.detector import DocumentDetector
+from src.ela import ELAAnalyzer
 from src.utils import load_config, log_config, setup_logging
 
 logger = logging.getLogger(__name__)
 
 _EXTS = {".jpg", ".jpeg", ".png", ".webp"}
-
-
-def analyze_image(path: str, ela, detector, classifier, cfg: dict) -> dict:
-    inf = cfg.get("inference", {})
-    ela_w = inf.get("ela_weight", 0.35)
-    cls_w = inf.get("classifier_weight", 0.65)
-    threshold = inf.get("forgery_threshold", 0.5)
-
-    ela_score = ela.get_forgery_score(path)
-    regions   = ela.get_suspicious_regions(path)
-    detections = detector.detect(path)
-
-    cls_score = None
-    if classifier:
-        cls_score = classifier.predict(path)["forgery_probability"]
-
-    combined = (ela_w * ela_score + cls_w * cls_score) if cls_score is not None else ela_score
-
-    return {
-        "path": path,
-        "is_forged": combined > threshold,
-        "forgery_probability": round(combined, 4),
-        "scores": {"ela": ela_score, "classifier": cls_score, "combined": round(combined, 4)},
-        "suspicious_regions": regions[:5],
-        "detections": detections,
-    }
 
 
 def main():
@@ -68,6 +43,10 @@ def main():
     logger.info(f"YOLO       : {'loaded' if detector.is_available else 'NOT FOUND — no bbox detection'}")
 
     input_path = Path(args.input)
+    if not input_path.exists():
+        logger.error("Input path does not exist: %s", input_path)
+        return
+
     images = [input_path] if input_path.is_file() else [
         p for p in input_path.iterdir() if p.suffix.lower() in _EXTS
     ]
@@ -80,7 +59,7 @@ def main():
     logger.info("─" * 70)
     results = []
     for img in sorted(images):
-        result = analyze_image(str(img), ela, detector, classifier, cfg)
+        result = analyze(str(img), ela, detector, classifier, cfg)
         results.append(result)
         verdict = "FORGED ⚠" if result["is_forged"] else "REAL   ✓"
         sigs = len(result["detections"].get("signatures", []))
@@ -96,9 +75,11 @@ def main():
             ela.visualize(str(img), save_path=f"ela_{img.stem}.png")
 
     if args.output:
-        with open(args.output, "w") as f:
+        out_path = Path(args.output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w") as f:
             json.dump(results, f, indent=2)
-        logger.info(f"Results saved → {args.output}")
+        logger.info(f"Results saved → {out_path}")
 
 
 if __name__ == "__main__":

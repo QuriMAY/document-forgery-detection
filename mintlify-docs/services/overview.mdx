@@ -1,0 +1,43 @@
+---
+title: Services Overview
+description: All six services start with one command.
+---
+
+```bash
+make up
+```
+
+<CardGroup cols={2}>
+  <Card title="REST API" icon="plug" href="/services/api">
+    `localhost:8000` — FastAPI endpoint for programmatic document analysis.
+  </Card>
+  <Card title="Demo App" icon="desktop" href="/services/demo">
+    `localhost:7860` — Gradio interface for drag-and-drop document analysis.
+  </Card>
+  <Card title="MLflow UI" icon="chart-line" href="/training/mlflow">
+    `localhost:5000` — Experiment tracking, model comparison, artifact download.
+  </Card>
+  <Card title="Grafana" icon="bars" href="/services/monitoring">
+    `localhost:3000` — Log search and visualization with LogQL queries.
+  </Card>
+</CardGroup>
+
+## All containers
+
+| Container | Port | Accessible |
+|-----------|------|-----------|
+| `forgery_api` | 8000 | ✅ Public |
+| `forgery_demo` | 7860 | ✅ Public |
+| `forgery_mlflow` | 5000 | ✅ Public |
+| `forgery_grafana` | 3000 | ✅ Public |
+| `forgery_loki` | 3100 | 🔒 Internal |
+| `forgery_promtail` | — | 🔒 Internal |
+
+## Management commands
+
+```bash
+make status    # health of all containers
+make logs      # tail stdout of all containers
+make down      # stop everything
+make restart   # rebuild + restart
+```

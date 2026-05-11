@@ -1,22 +1,21 @@
-version: "3.8"
-
 # ─────────────────────────────────────────────────────────────────────────────
 #  Document Forgery Detection — Full Stack
 #
-#  DO NOT run docker-compose up directly.
-#  Use:  make up
+#  Start everything with one command:  make up
 #
 #  Services:
-#    api      → http://localhost:8000   (Forgery Detection REST API)
-#    mlflow   → http://localhost:5000   (Experiment tracking UI)
-#    grafana  → http://localhost:3000   (Log visualization)
-#    loki     → internal only           (Log storage)
-#    promtail → internal only           (Log shipper)
+#    api      → http://localhost:8000   Forgery Detection REST API
+#    demo     → http://localhost:7860   Gradio visual demo app
+#    mlflow   → http://localhost:5000   Experiment tracking UI
+#    docs     → http://localhost:3001   Mintlify documentation site
+#    grafana  → http://localhost:3000   Log search and visualization
+#    loki     → internal               Log storage
+#    promtail → internal               Log shipper (tails ./logs/)
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
 
-  # ── 1. Forgery Detection API ───────────────────────────────────────────────
+  # ── 1. Forgery Detection REST API ─────────────────────────────────────────
   api:
     build: .
     container_name: forgery_api
@@ -24,9 +23,11 @@ services:
       - "8000:8000"
     volumes:
       - ./models:/app/models
+      - ./logs:/app/logs
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONPATH=/app
+      - MPLBACKEND=Agg
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -35,20 +36,43 @@ services:
       retries: 3
       start_period: 15s
 
-  # ── 2. MLflow Experiment Tracking UI ──────────────────────────────────────
-  # Reads mlflow.db created on the host by train_classifier.py
-  # touch mlflow.db must run before docker-compose up (handled by `make up`)
+  # ── 2. Gradio Demo App ────────────────────────────────────────────────────
+  demo:
+    build: .
+    container_name: forgery_demo
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      - MPLBACKEND=Agg
+    command: python app.py
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── 3. MLflow Experiment Tracking UI ──────────────────────────────────────
+  # The MLflow DB lives in a Docker-managed named volume so an accidental
+  # `rm -rf` / `git clean` on the host can't wipe experiment history.
+  # Artifacts stay in ./mlartifacts so they remain easy to browse on the host.
   mlflow:
     build: .
     container_name: forgery_mlflow
     ports:
       - "5000:5000"
     volumes:
-      - ./mlflow.db:/workspace/mlflow.db
+      - mlflow_db:/workspace
       - ./mlartifacts:/workspace/mlartifacts
     command: >
       mlflow ui
-        --backend-store-uri  sqlite:////workspace/mlflow.db
+        --backend-store-uri sqlite:////workspace/mlflow.db
         --default-artifact-root /workspace/mlartifacts
         --host 0.0.0.0
         --port 5000
@@ -60,12 +84,12 @@ services:
       retries: 5
       start_period: 10s
 
-  # ── 3. Loki (log storage) ──────────────────────────────────────────────────
+  # ── 4. Loki (log storage) ─────────────────────────────────────────────────
   loki:
     image: grafana/loki:3.0.0
     container_name: forgery_loki
     expose:
-      - "3100"         # internal only — accessed by Promtail and Grafana
+      - "3100"
     volumes:
       - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml:ro
       - loki_data:/loki
@@ -78,8 +102,9 @@ services:
       retries: 5
       start_period: 10s
 
-  # ── 4. Promtail (log shipper) ──────────────────────────────────────────────
-  # Tails ./logs/**/*.log and ships them to Loki with level + script labels
+  # ── 5. Promtail (log shipper) ─────────────────────────────────────────────
+  # Tails ./logs/**/*.log on the host and ships to Loki with level + script labels
+  # Training runs on the host — logs appear in Grafana automatically
   promtail:
     image: grafana/promtail:3.0.0
     container_name: forgery_promtail
@@ -92,7 +117,7 @@ services:
       loki:
         condition: service_healthy
 
-  # ── 5. Grafana (log visualization UI) ─────────────────────────────────────
+  # ── 6. Grafana (log visualization UI) ────────────────────────────────────
   grafana:
     image: grafana/grafana:10.4.0
     container_name: forgery_grafana
@@ -111,8 +136,30 @@ services:
       loki:
         condition: service_healthy
 
+  # ── 7. Mintlify Documentation Site ──────────────────────────────────────────
+  # Uses Node 20 LTS — avoids the Node 25 incompatibility on the host
+  docs:
+    image: node:20-alpine
+    container_name: forgery_docs
+    working_dir: /docs
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./mintlify-docs:/docs
+    command: >
+      sh -c "npm install -g mintlify@4.0.0 --quiet &&
+             mintlify dev --port 3001 --host 0.0.0.0"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 volumes:
   loki_data:
   grafana_data:
+  mlflow_db:

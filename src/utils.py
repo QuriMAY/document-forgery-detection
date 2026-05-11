@@ -1,5 +1,6 @@
 import datetime
 import logging
+import os
 import platform
 import sys
 from pathlib import Path
@@ -7,7 +8,13 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
+# Default log directory. Resolved lazily inside setup_logging() so tests and
+# containers can override it via the LOG_DIR env var.
 LOG_DIR = Path("logs")
+
+
+def _resolve_log_dir() -> Path:
+    return Path(os.environ.get("LOG_DIR", str(LOG_DIR)))
 
 # Shared format used by both console and file handlers
 _FMT      = "%(asctime)s | %(levelname)-8s | %(name)-28s | %(message)s"
@@ -31,7 +38,7 @@ def setup_logging(script_name: str, level: str = "INFO") -> Path:
     if env_path.exists():
         load_dotenv(dotenv_path=env_path, override=False)  # override=False: real env vars win
 
-    script_log_dir = LOG_DIR / script_name
+    script_log_dir = _resolve_log_dir() / script_name
     script_log_dir.mkdir(parents=True, exist_ok=True)
 
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")

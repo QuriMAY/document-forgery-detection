@@ -1,0 +1,74 @@
+---
+title: Architecture
+description: How the detection pipeline and infrastructure fit together.
+---
+
+## Detection pipeline
+
+```
+Input image (JPEG / PNG / WebP)
+         │
+         ▼
+┌─────────────────────────────────────────────────────┐
+│                  Analysis Pipeline                  │
+│                                                     │
+│  ELA Analyzer          ResNet Classifier            │
+│  ─────────────         ──────────────────           │
+│  re-compress           224×224 resize               │
+│  abs diff × 15    +    ImageNet normalise           │
+│  top-10% score         backbone + head              │
+│  region contours       softmax P(forged)            │
+│       │                      │                      │
+│   ela_score (0–1)        cls_score (0–1)            │
+│       └──────────┬───────────┘                      │
+│                  │                                  │
+│  combined = 0.35 × ela + 0.65 × cnn                │
+│  verdict  = combined > 0.5 → FORGED                 │
+│                                                     │
+│  YOLOv8 Detector (optional)                         │
+│  → signature bboxes + stamp bboxes                  │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## Infrastructure
+
+```
+Host machine                      Docker services
+────────────────────              ───────────────────────────────────
+train_classifier.py  →  mlflow.db  ←  forgery_mlflow  :5000
+scripts/evaluate.py  →  mlartifacts
+
+All scripts          →  logs/      ←  Promtail → Loki → Grafana  :3000
+
+models/classifier.pth              ←  forgery_api   :8000
+models/best.pt                     ←  forgery_demo  :7860
+```
+
+---
+
+## Components
+
+| Component | File | Role |
+|-----------|------|------|
+| ELA Analyzer | `src/ela.py` | Detects JPEG compression inconsistencies |
+| Classifier | `src/classifier.py` | ResNet inference wrapper |
+| Detector | `src/detector.py` | YOLOv8 inference wrapper (graceful fallback) |
+| Data Generator | `src/data_generator.py` | Copy-move + splice forgery synthesis |
+| Utils | `src/utils.py` | Logging, config loader, .env loading |
+| FastAPI | `api/main.py` | REST endpoint |
+| Gradio app | `app.py` | Web demo interface |
+| Training | `train_classifier.py` | Full training loop with MLflow + TensorBoard |
+| Evaluation | `scripts/evaluate.py` | Test-set metrics + MLflow artifact upload |
+
+---
+
+## Model weights
+
+| File | Created by | Used by |
+|------|-----------|---------|
+| `models/classifier.pth` | `train_classifier.py` | API, demo app, `inference.py` |
+| `models/best.pt` | `train_yolo.py` | API, demo app, `inference.py` |
+
+Both are in `.gitignore`. Copy manually or use DVC for versioning.

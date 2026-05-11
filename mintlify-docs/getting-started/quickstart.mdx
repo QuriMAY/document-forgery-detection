@@ -1,0 +1,117 @@
+---
+title: Quick Start
+description: Get from zero to a running system in one session.
+---
+
+## Complete workflow
+
+```bash
+# 1. Environment (one time only)
+make venv && source forgery_env/bin/activate && make install
+
+# 2. Data pipeline
+make download        # fetch datasets from Kaggle
+make generate        # create 1000 synthetic forgeries
+make split           # 70/15/15 train/val/test split
+
+# 3. Train
+make train           # ResNet18 classifier
+make evaluate        # test-set metrics + MLflow upload
+
+# 4. Launch everything
+make up              # all six Docker services
+```
+
+Open **[localhost:7860](http://localhost:7860)** → upload any document → instant analysis.
+
+---
+
+## Step by step
+
+<Steps>
+  <Step title="Create virtual environment">
+    ```bash
+    make venv
+    source forgery_env/bin/activate   # Windows: forgery_env\Scripts\activate
+    make install
+    ```
+    This installs PyTorch, FastAPI, Gradio, MLflow, YOLOv8, and all dependencies.
+  </Step>
+
+  <Step title="Configure Kaggle credentials">
+    Edit `.env` in the project root:
+    ```env
+    KAGGLE_USERNAME=your_username
+    KAGGLE_KEY=your_api_key
+    PYTHONPATH=.
+    ```
+    Get your key at [kaggle.com/settings](https://www.kaggle.com/settings) → API → Create New Token.
+
+    <Warning>
+      Never commit `.env`. It is already listed in `.gitignore`.
+    </Warning>
+  </Step>
+
+  <Step title="Download datasets">
+    ```bash
+    make download
+    ```
+    Downloads 4 Kaggle datasets into `data/real/` and `data/patches/`.
+
+    <Tip>
+      For a fast test run use `python kaggle_download.py --all --limit 300` — downloads only 300 images per dataset.
+    </Tip>
+  </Step>
+
+  <Step title="Generate synthetic forgeries">
+    ```bash
+    make generate
+    ```
+    Creates 1 000 forged documents using copy-move and splice attacks.
+  </Step>
+
+  <Step title="Split into train / val / test">
+    ```bash
+    make split
+    ```
+    Stratified 70/15/15 split. Produces `data/train/`, `data/val/`, `data/test/`.
+  </Step>
+
+  <Step title="Train the classifier">
+    ```bash
+    make train
+    ```
+    You'll see live progress:
+    ```
+    Epochs:  47%|██████████████          | 7/15 [08:23<09:32, best=0.8471]
+      train: 100%|████████████████████████| 350/350 [loss=0.3241]
+        val: 100%|████████████████████████|  75/75  [loss=0.4102]
+    Epoch   7/15 | VlAUC 0.9021 ✓ Best model saved
+    ```
+  </Step>
+
+  <Step title="Evaluate on test set">
+    ```bash
+    make evaluate
+    ```
+    Produces confusion matrix, ROC curve, PR curve and uploads all to MLflow.
+  </Step>
+
+  <Step title="Launch all services">
+    ```bash
+    make up
+    ```
+
+    | Service | URL |
+    |---------|-----|
+    | REST API | http://localhost:8000 |
+    | Demo app | http://localhost:7860 |
+    | MLflow UI | http://localhost:5000 |
+    | Grafana | http://localhost:3000 |
+
+    ```bash
+    make status   # check health of each container
+    make down     # stop everything
+    ```
+  </Step>
+</Steps>

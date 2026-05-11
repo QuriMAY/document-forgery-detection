@@ -1,0 +1,80 @@
+---
+title: Document Forgery Detection
+description: AI-powered system for detecting tampered documents — forged signatures, replaced stamps, and copy-move manipulations.
+---
+
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.png"
+  alt="Hero Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.png"
+  alt="Hero Dark"
+/>
+
+## What it does
+
+Takes a document image as input and determines whether it has been tampered with using **three independent detection methods** combined into a single confidence score.
+
+| Method | What it detects | Needs training |
+|--------|----------------|----------------|
+| **ELA** — Error Level Analysis | JPEG compression inconsistencies left by editing | No |
+| **CNN** — ResNet Classifier | Whole-document real vs. forged classification | Yes |
+| **YOLO** — Object Detector | Bounding boxes around signatures and stamps | Yes + labelling |
+
+```
+final_score = 0.35 × ela_score + 0.65 × cnn_score
+verdict     = "FORGED" if final_score > 0.5
+```
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Three-Layer Detection" icon="layer-group" href="/reference/architecture">
+    ELA compression analysis, ResNet CNN classifier, and YOLOv8 stamp/signature detector — each independent, combined into one score.
+  </Card>
+  <Card title="One-Command Stack" icon="rocket" href="/getting-started/quickstart">
+    `make up` starts all six Docker services: API, demo app, MLflow, Grafana, Loki, and Promtail.
+  </Card>
+  <Card title="Experiment Tracking" icon="chart-line" href="/training/mlflow">
+    Every training run auto-logged to MLflow — compare models, view metric curves, download checkpoints.
+  </Card>
+  <Card title="Gradio Demo App" icon="desktop" href="/services/demo">
+    Upload any document, get instant analysis with live gauge charts, ELA heatmap, and detection results.
+  </Card>
+  <Card title="Log Monitoring" icon="bars" href="/services/monitoring">
+    All script logs shipped to Grafana + Loki automatically. Search, filter, and live-tail from the browser.
+  </Card>
+  <Card title="Synthetic Data" icon="flask" href="/data-pipeline/generate">
+    No forgery dataset? Generate thousands of copy-move and splice forgeries from any real document images.
+  </Card>
+</CardGroup>
+
+## Services at a glance
+
+After running `make up`, six services are available:
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| REST API | [localhost:8000](http://localhost:8000) | Forgery detection endpoint |
+| API docs | [localhost:8000/docs](http://localhost:8000/docs) | Swagger interactive UI |
+| Demo app | [localhost:7860](http://localhost:7860) | Gradio visual interface |
+| MLflow | [localhost:5000](http://localhost:5000) | Experiment tracking |
+| Grafana | [localhost:3000](http://localhost:3000) | Log search & visualization |
+
+## Quick install
+
+```bash
+git clone https://github.com/your-username/document-forgery-detection.git
+cd document-forgery-detection
+
+make venv && source forgery_env/bin/activate
+make install
+make up
+```
+
+<Card title="Continue to Quick Start →" icon="arrow-right" href="/getting-started/quickstart">
+  Set up the environment, download data, train, and launch all services.
+</Card>

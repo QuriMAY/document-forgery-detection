@@ -1,11 +1,13 @@
+import logging
 from pathlib import Path
-from typing import Union
 
 import numpy as np
 import torch
 import torch.nn as nn
 from PIL import Image
 from torchvision import models, transforms
+
+logger = logging.getLogger(__name__)
 
 
 _BACKBONES: dict[str, tuple] = {
@@ -53,15 +55,31 @@ class ForgeryClassifier:
         ])
 
     def _load_model(self, path: str) -> nn.Module:
+        if not Path(path).exists():
+            raise FileNotFoundError(f"Classifier checkpoint not found: {path}")
+
         checkpoint = torch.load(path, map_location=self.device)
-        backbone = checkpoint.get("backbone", self.backbone) if isinstance(checkpoint, dict) else self.backbone
+
+        if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
+            backbone = checkpoint.get("backbone", self.backbone)
+            state = checkpoint["model_state_dict"]
+        else:
+            # Legacy: bare state-dict on disk. Accept but warn so the next
+            # save reaches the canonical format.
+            logger.warning(
+                "Loading legacy checkpoint (no 'model_state_dict' key) from %s — "
+                "re-train or re-save to upgrade.",
+                path,
+            )
+            backbone = self.backbone
+            state = checkpoint
+
         model = build_model(backbone=backbone, num_classes=2, pretrained=False)
-        state = checkpoint.get("model_state_dict", checkpoint) if isinstance(checkpoint, dict) else checkpoint
         model.load_state_dict(state)
         model.eval()
         return model.to(self.device)
 
-    def predict(self, image: Union[str, np.ndarray]) -> dict:
+    def predict(self, image: str | np.ndarray) -> dict:
         if isinstance(image, np.ndarray):
             pil = Image.fromarray(image).convert("RGB")
         else:
@@ -72,7 +90,8 @@ class ForgeryClassifier:
         with torch.no_grad():
             logits = self.model(tensor)
             prob = torch.softmax(logits, dim=1)
-            forgery_prob = float(prob[0, 1])
+            # ImageFolder trains classes alphabetically: forged=0, real=1.
+            forgery_prob = float(prob[0, 0])
 
         return {
             "is_forged": forgery_prob > 0.5,

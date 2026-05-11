@@ -1,10 +1,9 @@
 import io
+
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-from pathlib import Path
-from typing import Optional
-import matplotlib.pyplot as plt
 
 
 class ELAAnalyzer:
@@ -69,7 +68,7 @@ class ELAAnalyzer:
     def visualize(
         self,
         image_path: str,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
     ) -> plt.Figure:
         """Side-by-side: original | ELA map | suspicious regions overlay."""
         original = np.array(Image.open(image_path).convert("RGB"))
@@ -82,12 +81,18 @@ class ELAAnalyzer:
             cv2.rectangle(overlay, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-        axes[0].imshow(original); axes[0].set_title("Original"); axes[0].axis("off")
-        axes[1].imshow(ela);      axes[1].set_title(f"ELA Map (q={self.quality})"); axes[1].axis("off")
-        axes[2].imshow(overlay);  axes[2].set_title("Suspicious Regions"); axes[2].axis("off")
+        for ax, img, title in (
+            (axes[0], original, "Original"),
+            (axes[1], ela, f"ELA Map (q={self.quality})"),
+            (axes[2], overlay, "Suspicious Regions"),
+        ):
+            ax.imshow(img)
+            ax.set_title(title)
+            ax.axis("off")
         plt.tight_layout()
 
         if save_path:
             plt.savefig(save_path, dpi=150, bbox_inches="tight")
+            plt.close(fig)
 
         return fig

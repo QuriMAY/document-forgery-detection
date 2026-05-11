@@ -10,26 +10,29 @@ and running system.
 --------------------------------------------------------------------------------
 
   Takes a document image (invoice, contract, ID, etc.) and determines whether
-  it has been tampered with. It uses three independent methods:
+  it has been tampered with. Three independent methods, one combined score:
 
   1. ELA  (Error Level Analysis)
        Detects JPEG compression inconsistencies caused by editing.
-       Works on ANY image with zero training required.
+       Works on ANY image — zero training required.
 
   2. CNN  (ResNet Classifier)
        Trained neural network that classifies whole documents as
-       real or forged. This is your main accuracy driver.
+       real or forged. Main accuracy driver.
 
   3. YOLO  (Object Detector)  [optional]
        Draws bounding boxes around signatures and stamps.
-       Requires manual labelling on Roboflow before training.
+       Requires manual labelling on Roboflow.
 
   Combined score = 0.35 × ELA + 0.65 × CNN
   Verdict: score > 0.5 → FORGED
 
-  MLflow tracks every training run automatically.
-  Grafana + Loki let you search all script logs in a browser.
-  One command starts the entire stack: make up
+  HOW THE TRAINED MODEL REACHES THE DEMO:
+    1. You run: make train
+    2. Best model saved to: models/classifier.pth
+    3. Docker mounts: ./models:/app/models  (in docker-compose.yml)
+    4. Demo checks for the file on every upload — picks it up automatically
+    5. No restart needed — hot-reload is built in
 
 --------------------------------------------------------------------------------
   PROJECT FOLDER STRUCTURE
@@ -39,8 +42,8 @@ and running system.
   ├── Makefile                     ← make up / train / demo / evaluate / ...
   ├── config.yaml                  ← ALL hyperparameters in one place
   ├── requirements.txt             ← Python dependencies
-  ├── Dockerfile                   ← API + MLflow image
-  ├── docker-compose.yml           ← All 5 services in one file
+  ├── Dockerfile                   ← CPU-only PyTorch (faster Docker builds)
+  ├── docker-compose.yml           ← All 7 services in one file
   ├── .env                         ← Your secret keys (never commit this)
   ├── .dockerignore                ← Keeps Docker image lean
   ├── STEPS.txt                    ← This file
@@ -48,15 +51,16 @@ and running system.
   ├── src/                         ← Core library (imported by all scripts)
   │   ├── ela.py                   ← ELA analysis + region localization
   │   ├── classifier.py            ← ResNet builder + inference wrapper
-  │   ├── detector.py              ← YOLO wrapper (graceful fallback if no model)
+  │   ├── detector.py              ← YOLO wrapper (graceful fallback)
   │   ├── data_generator.py        ← Synthetic forgery generator
   │   └── utils.py                 ← Logging, config loader, .env loader
   │
   ├── kaggle_download.py           ← Downloads training datasets from Kaggle
-  ├── train_classifier.py          ← CNN training (auto-logs to MLflow + TensorBoard)
+  ├── train_classifier.py          ← CNN training (MLflow + TensorBoard + tqdm)
   ├── train_yolo.py                ← YOLO stamp/signature detector training
   ├── inference.py                 ← CLI: analyze any image or folder
-  ├── demo.py                      ← Visual demo with gauge charts + dashboards
+  ├── demo.py                      ← Static visual demo (saves PNG dashboards)
+  ├── app.py                       ← Gradio web app (hot-reloads trained model)
   │
   ├── scripts/
   │   ├── generate_synthetic_data.py  ← Creates forged images from real ones
@@ -66,27 +70,26 @@ and running system.
   ├── api/
   │   └── main.py                  ← FastAPI server
   │
-  ├── monitoring/                  ← Grafana + Loki configuration (tracked in git)
+  ├── monitoring/                  ← Grafana + Loki config (tracked in git)
   │   ├── loki-config.yaml
   │   ├── promtail-config.yaml     ← Tails logs/ → Loki
   │   └── grafana/provisioning/    ← Auto-configures Loki datasource
   │
-  ├── notebooks/
-  │   ├── 01_ELA_analysis.ipynb
-  │   ├── 02_dataset_preparation.ipynb
-  │   └── 03_model_evaluation.ipynb
+  ├── mintlify-docs/               ← Mintlify documentation source
+  │   ├── mint.json
+  │   └── **/*.mdx
   │
   ├── data/
   │   ├── real/        ← Authentic documents (downloaded in Step 4)
-  │   ├── patches/     ← Signature images (splice donors, downloaded in Step 4)
+  │   ├── patches/     ← Signature images (splice donors)
   │   ├── generated/   ← Created by generate_synthetic_data.py
   │   ├── train/       ← Created by prepare_dataset.py
   │   ├── val/         ← Created by prepare_dataset.py
   │   └── test/        ← Created by prepare_dataset.py
   │
   ├── models/
-  │   ├── classifier.pth   ← Saved after training finishes
-  │   └── best.pt          ← Saved after YOLO training finishes
+  │   ├── classifier.pth   ← Saved after make train finishes ★
+  │   └── best.pt          ← Saved after train_yolo.py finishes
   │
   ├── mlflow.db            ← MLflow experiment database (auto-created)
   ├── mlartifacts/         ← MLflow artifact store (checkpoints, plots)
@@ -100,19 +103,11 @@ and running system.
   STEP 1 — CREATE THE VIRTUAL ENVIRONMENT
 ================================================================================
 
-  A virtual environment isolates this project's packages from your system.
-  Only needed once.
-
       make venv
+      source forgery_env/bin/activate      # Windows: forgery_env\Scripts\activate
 
-  This runs:  python -m venv forgery_env
-
-  Activate it every time you open a new terminal:
-
-      Linux / Mac:   source forgery_env/bin/activate
-      Windows:       forgery_env\Scripts\activate
-
-  You'll know it is active when you see "(forgery_env)" in your prompt.
+  You'll see "(forgery_env)" in your prompt when active.
+  Re-activate every time you open a new terminal.
 
 
 ================================================================================
@@ -121,38 +116,29 @@ and running system.
 
       make install
 
-  This runs:  pip install -r requirements.txt
-
-  Installs: PyTorch, OpenCV, FastAPI, YOLOv8, MLflow, Kaggle API, Grafana
-            client tools, scikit-learn, TensorBoard, python-dotenv, and more.
+  Installs: PyTorch, OpenCV, FastAPI, YOLOv8, MLflow, Gradio, Kaggle API,
+            scikit-learn, TensorBoard, python-dotenv, tqdm, plotly, and more.
 
   Expected time: 3–10 minutes.
-
-  If pip itself is outdated:
-      forgery_env/bin/pip install --upgrade pip
 
 
 ================================================================================
   STEP 3 — CONFIGURE YOUR KAGGLE API KEY
 ================================================================================
 
-  You need a Kaggle account to download datasets.
-
   3a. Create a free account at https://www.kaggle.com
 
   3b. Go to: https://www.kaggle.com/settings → Account → API → Create New Token
-      This downloads kaggle.json.
+      Downloads kaggle.json.
 
-  3c. Open .env in the project root and fill in:
+  3c. Open .env in the project root:
 
       KAGGLE_USERNAME=your_kaggle_username
       KAGGLE_KEY=your_kaggle_api_key
       PYTHONPATH=.
 
-      (The key is the long string from kaggle.json)
-
-  The .env file is in .gitignore — it will never be committed.
-  The scripts load .env automatically via python-dotenv.
+  The .env file is in .gitignore — never committed.
+  Scripts load .env automatically via python-dotenv.
 
 
 ================================================================================
@@ -161,29 +147,15 @@ and running system.
 
       make download
 
-  This runs:  python kaggle_download.py --all
+  Downloads 4 datasets from Kaggle:
+    data/real/    ← invoices, letters, forms, scanned office documents
+    data/patches/ ← signature images (used as splice donors)
 
-  Downloads 4 datasets:
-
-    INTO data/real/  (authentic document images for CNN training):
-      shaz13/real-world-documents-collections   — invoices, letters, forms
-      patrickaudriaz/tobacco3482dataset          — scanned office documents
-
-    INTO data/patches/  (signatures used as splice attack donors):
-      robinreni/signature-verification-dataset
-      ishanikathuria/handwritten-signatures
-
-  OTHER OPTIONS:
-      python kaggle_download.py --documents          # only real documents
-      python kaggle_download.py --all --limit 300    # quick test (300 per dataset)
-      python kaggle_download.py --all --limit 1000   # medium run
-
-  HOW LONG:
-      --limit 300:   2–5 minutes
-      Full download: 20–60 minutes
+  Quick test (300 per dataset):
+      python kaggle_download.py --all --limit 300
 
   Log saved to:
-      logs/kaggle_download/kaggle_download_YYYY-MM-DD_HH-MM-SS.log
+      logs/kaggle_download/
 
 
 ================================================================================
@@ -192,24 +164,16 @@ and running system.
 
       make generate
 
-  This runs:
-      python scripts/generate_synthetic_data.py \
-          --real-dir data/real \
-          --donor-dir data/patches \
-          --num-forged 1000
-
-  Two forgery types are created:
-    Copy-Move:  Copies a region of the document and pastes it elsewhere.
-    Splice:     Pastes a region from a different image over the document.
+  Two forgery types:
+    Copy-Move: copies a region from the same document and pastes elsewhere
+    Splice:    pastes a region from a different document onto the target
 
   OUTPUT:
-      data/generated/real/    ← copies of real images
-      data/generated/forged/  ← synthetic forgeries
+      data/generated/real/    ← copies of authentic images
+      data/generated/forged/  ← newly created forgeries
 
   RECOMMENDED SIZES:
-      Minimum viable:  300 + 300    (pipeline test)
-      Good results:    1000 + 1000
-      Best results:    3000+ per class
+      Minimum: 300 + 300    Good: 1000 + 1000    Best: 3000+ per class
 
   Log saved to:
       logs/generate_synthetic_data/
@@ -221,19 +185,10 @@ and running system.
 
       make split
 
-  This runs:
-      python scripts/prepare_dataset.py \
-          --source-dir data/generated \
-          --output-dir data
+  Stratified 70/15/15 split into:
+      data/train/    data/val/    data/test/
 
-  Splits the data:
-      train  70% — model learns from this
-      val    15% — used after each epoch to detect overfitting
-      test   15% — used ONLY at the end for the final honest score
-
-  OUTPUT:
-      data/train/real/    data/val/real/    data/test/real/
-      data/train/forged/  data/val/forged/  data/test/forged/
+  NEVER use test data during training — it is your honest final score.
 
   Log saved to:
       logs/prepare_dataset/
@@ -243,16 +198,16 @@ and running system.
   STEP 7 — REVIEW config.yaml BEFORE TRAINING
 ================================================================================
 
-  Key settings for CPU (already set as defaults):
+  Key settings (already set for CPU):
 
       classifier:
         backbone: resnet18     ← fastest on CPU; use resnet50 for GPU
         batch_size: 16         ← lower to 8 if you run out of RAM
-        epochs: 15             ← enough for a first run
+        epochs: 15             ← set to 5 first to verify pipeline works
         lr: 0.001
-        patience: 10           ← stops early if val loss stalls
+        patience: 10           ← early stopping
 
-  When you get a GPU, change to:
+  GPU settings:
       backbone: resnet50
       batch_size: 32
       epochs: 30
@@ -264,36 +219,26 @@ and running system.
 
       make train
 
-  This runs:  python train_classifier.py
+  LIVE PROGRESS (three nested tqdm bars):
 
-  Resume from a checkpoint:
-      python train_classifier.py --resume models/classifier.pth
+      Epochs:  47%|██████████████          | 7/15 [08:23, best=0.8471]
+        train: 100%|████████████████████████| 350/350 [loss=0.3241]
+          val: 100%|████████████████████████|  75/75  [loss=0.4102]
+      Epoch   7/15 | TrLoss 0.3241 TrAcc 0.8712 | VlLoss 0.4102 VlAUC 0.9021 | 75.4s
+        ✓ Best model saved  (AUC=0.9021)
 
-  WHAT HAPPENS:
-    • Each epoch = one full pass through all training images
-    • Validation runs after each epoch
-    • Best model (by AUC) saved to models/classifier.pth
-    • All metrics auto-logged to MLflow and TensorBoard
-    • Stops early if validation loss stops improving
-
-  READING THE OUTPUT:
-    Epoch   1/15 | TrLoss 0.6234 TrAcc 0.7123 | VlLoss 0.5891 VlAcc 0.7450 VlF1 0.7312 VlAUC 0.8102 | 45.3s
-
-    AUC ranges:
+  AUC GUIDE:
       0.70–0.79  Acceptable
       0.80–0.89  Good
       0.90+      Excellent
 
-  EXPECTED TIME (CPU):
-    ResNet18, 1000 images, 15 epochs  →  30–60 minutes
-    ResNet50, 3000 images, 30 epochs  →  3–6 hours
+  MODEL SAVED TO: models/classifier.pth  ← Docker demo picks this up automatically
 
-  WHAT IS LOGGED TO MLFLOW AUTOMATICALLY:
-    Params:   backbone, batch_size, lr, epochs, image_size, device
-    Per epoch: train_loss, train_acc, train_f1, val_loss, val_acc,
-               val_f1, val_auc, lr, epoch_time_s
-    Artifact: models/classifier.pth (on best AUC)
-    Final:    best_val_auc, best_epoch, early_stopped
+  EXPECTED TIME (CPU):
+      ResNet18, 1000 images, 15 epochs: 30–60 minutes
+
+  MLFLOW: every epoch auto-logged to mlflow.db
+  TENSORBOARD: tensorboard --logdir runs/classifier → http://localhost:6006
 
   Log saved to:
       logs/train_classifier/
@@ -303,32 +248,14 @@ and running system.
   STEP 8.5 — MLFLOW EXPERIMENT TRACKING UI
 ================================================================================
 
-  MLflow is started automatically with `make up` at port 5000.
-  Or run standalone on the host:
-
-      mlflow ui --backend-store-uri sqlite:///mlflow.db
-      Open: http://localhost:5000
+  Starts automatically with make up at http://localhost:5000
+  Or standalone: mlflow ui --backend-store-uri sqlite:///mlflow.db
 
   WHAT YOU CAN DO:
-
-    Runs table
-      • Every training run shown as a row
-      • Sort by val_auc to instantly find your best model
-      • Run name format: resnet18_bs16_lr0.001
-
-    Compare runs
-      • Tick 2+ runs → Compare → overlaid metric charts
-
-    Run detail
-      • Full per-epoch metric history
-      • Artifacts tab → download classifier.pth or view plots
-
-    Search
-      • metrics.val_auc > 0.85
-      • params.backbone = "resnet50"
-
-  After running scripts/evaluate.py, an "evaluation" run appears with:
-    test_auc, test_accuracy, confusion_matrix.png, roc_curve.png, pr_curve.png
+    Sort runs by val_auc → find best model instantly
+    Compare 2 runs → overlaid metric charts
+    Download classifier.pth from Artifacts tab
+    Filter: metrics.val_auc > 0.85
 
 
 ================================================================================
@@ -337,80 +264,177 @@ and running system.
 
       make evaluate
 
-  This runs:  python scripts/evaluate.py --test-dir data/test
-
   OUTPUT in evaluation/:
-      confusion_matrix.png   TP / FP / TN / FN counts as a colour grid
-      roc_curve.png          ROC curve with AUC score
-      pr_curve.png           Precision-Recall curve with Average Precision
-      report.txt             Full per-class classification report
+      confusion_matrix.png   roc_curve.png   pr_curve.png   report.txt
 
-  All four files are also uploaded to MLflow as artifacts.
-
-  READING THE CONFUSION MATRIX:
-                    Predicted Real   Predicted Forged
-      Actual Real        TN               FP
-      Actual Forged      FN               TP
-
-      FP = real docs wrongly flagged (annoying)
-      FN = forged docs missed (dangerous — minimise these)
+  All four files also uploaded to MLflow as artifacts.
 
   Log saved to:
       logs/evaluate/
 
 
 ================================================================================
-  STEP 10 — RUN THE VISUAL DEMO
+  STEP 10 — RUN THE VISUAL DEMO (STATIC)
 ================================================================================
 
       make demo
 
-  This runs:  python demo.py
-
-  Generates synthetic documents, runs full analysis, saves visual reports.
+  Generates synthetic documents, runs full analysis, saves reports.
 
   OUTPUT in demo_output/:
-      dashboard_authentic.png  — original / ELA map / regions / gauge / bars
-      dashboard_forged.png     — same layout for the forged version
-      comparison.png           — side-by-side 3×4 comparison grid
-      sample_authentic.jpg     — the generated authentic document
-      sample_forged.jpg        — the generated forged document
+      dashboard_authentic.png  ← gauge + ELA + regions + scores
+      dashboard_forged.png     ← same layout for the forged version
+      comparison.png           ← side-by-side 3×4 comparison grid
 
   With your own image:
       python demo.py --image path/to/document.jpg
 
-  Without opening windows (save only):
-      python demo.py --no-show
+
+================================================================================
+  STEP 11 — START ALL SERVICES WITH ONE COMMAND
+================================================================================
+
+      make up
+
+  What this does:
+    1. Creates mlflow.db and mlartifacts/ if they don't exist
+    2. Creates logs/ and models/ directories
+    3. docker compose up -d --build
+
+  ALL 7 SERVICES STARTED:
+
+    forgery_api      http://localhost:8000       Forgery Detection REST API
+    forgery_api docs http://localhost:8000/docs  Swagger interactive docs
+    forgery_demo     http://localhost:7860       Gradio demo app ★
+    forgery_mlflow   http://localhost:5000       MLflow experiment UI
+    forgery_docs     http://localhost:3001       Mintlify documentation site
+    forgery_grafana  http://localhost:3000       Log search & visualization
+    forgery_loki     internal                   Log storage
+    forgery_promtail internal                   Tails logs/ → Loki
+
+  NOTE: forgery_docs (Mintlify) takes ~60 seconds on first start
+        while npm installs mintlify inside the container.
+
+  OTHER COMMANDS:
+      make down        stop everything
+      make restart     rebuild + restart
+      make status      show container health
+      make logs        tail all container stdout
 
 
 ================================================================================
-  STEP 11 — (OPTIONAL) TRAIN YOLO FOR STAMP/SIGNATURE DETECTION
+  HOW THE TRAINED MODEL REACHES THE DEMO
 ================================================================================
 
-  YOLO adds bounding boxes around signatures and stamps.
-  Skip this if you only need the real/forged verdict.
+  This is important to understand:
 
-  11a. Create a free account at https://roboflow.com
-  11b. New project → Object Detection
-  11c. Upload document images, draw boxes:
-         Signatures → label "signature"
-         Stamps     → label "stamp"
-         Aim for 200–300 labelled images minimum.
-  11d. Export → YOLOv8 format → Download ZIP
-       Extract it — you'll find data.yaml inside.
-  11e. Train:
+  1. You train ON THE HOST (not in Docker):
+         make train
+         → saves models/classifier.pth
 
+  2. The demo container mounts your models folder:
+         volumes:
+           - ./models:/app/models   ← in docker-compose.yml
+
+  3. The demo checks for models/classifier.pth on EVERY upload.
+     No restart needed — if you train while the demo is running,
+     upload the next image and it will use the new model automatically.
+
+  4. The demo sidebar shows model status:
+       ✅ Loaded     ← model found and loaded
+       ⚠️ Not trained yet  ← no model file, ELA-only mode
+
+  WORKFLOW:
+      make up          ← starts demo (ELA-only mode)
+      make train       ← trains model on host, saves to models/
+      (open localhost:7860 and upload a document)
+      ← demo detects models/classifier.pth and uses it
+
+
+================================================================================
+  STEP 12 — GRADIO DEMO APP (WEB INTERFACE)
+================================================================================
+
+  After make up: http://localhost:7860
+
+  FEATURES:
+    • Drag-and-drop or paste from clipboard
+    • Auto-analysis on upload (no button click needed)
+    • Gallery: Original | ELA Map | Suspicious Regions
+    • Interactive Plotly gauge (green/yellow/red zones)
+    • Score bars: ELA / CNN / combined
+    • Sidebar: model status + links to other services
+    • Hot-reload: train while demo is running, next upload uses new model
+
+  Run locally without Docker:
+      python app.py
+
+
+================================================================================
+  STEP 12.5 — GRAFANA LOG VISUALIZATION
+================================================================================
+
+  After make up: http://localhost:3000  (no login required)
+  Go to: Explore → Loki
+
+  USEFUL LOGQL QUERIES:
+      {script="train_classifier"}               all training logs
+      {script="train_classifier"} |= "VlAUC"   AUC metric lines
+      {script="train_classifier"} | live        live tail during training
+      {app="forgery-detection", level="ERROR"}  all errors
+
+  IMPORTANT: Start make up BEFORE training. Promtail only ships lines
+  written after it started. Existing .log files are still on disk in logs/.
+
+
+================================================================================
+  STEP 13 — DOCUMENTATION SITE
+================================================================================
+
+  Full documentation is served at http://localhost:3001 after make up.
+
+  The docs use Mintlify (same as docs.openclaw.ai) with:
+    Cards, Steps, Tabs, Accordions, ParamField, ResponseField, CodeGroup
+
+  To run locally (requires Node 20 LTS via fnm):
+      # Install fnm once:
+      curl -fsSL https://fnm.vercel.app/install | bash
+      source ~/.zshrc
+      fnm install 20
+
+      # Then:
+      make mintlify      ← http://localhost:3001
+
+  To deploy free on mintlify.com:
+      1. Push mintlify-docs/ to GitHub
+      2. Connect repo at dashboard.mintlify.com
+      3. Your docs go live at your-project.mintlify.app
+
+
+================================================================================
+  STEP 14 — (OPTIONAL) TRAIN YOLO DETECTOR
+================================================================================
+
+  Adds bounding boxes around signatures and stamps.
+  Skip if you only need the real/forged verdict.
+
+  14a. Label images at https://roboflow.com
+         Signatures → "signature"
+         Stamps     → "stamp"
+         Aim for 200–300+ labelled images.
+  14b. Export → YOLOv8 format → Extract ZIP
+  14c. Train:
            python train_yolo.py --data path/to/data.yaml
 
   Best weights auto-copied to models/best.pt.
-  The API and inference.py detect and load it on next startup.
+  API and demo detect it on next upload — no restart needed.
 
   Log saved to:
       logs/train_yolo/
 
 
 ================================================================================
-  STEP 12 — RUN INFERENCE ON YOUR OWN DOCUMENTS
+  STEP 15 — CLI INFERENCE
 ================================================================================
 
   Single image:
@@ -429,77 +453,8 @@ and running system.
       document.jpg    FORGED ⚠  prob=0.823  ela=0.312  sigs=1  stamps=0
       contract.jpg    REAL   ✓  prob=0.134  ela=0.051  sigs=0  stamps=1
 
-  ADJUST THRESHOLD in config.yaml:
-      forgery_threshold: 0.5   ← lower = more sensitive (more false alarms)
-                                   higher = only flag confident forgeries
-
   Log saved to:
       logs/inference/
-
-
-================================================================================
-  STEP 13 — START ALL SERVICES WITH ONE COMMAND
-================================================================================
-
-      make up
-
-  What this does:
-    1. Creates mlflow.db and mlartifacts/ if they don't exist yet
-    2. Creates logs/ and models/ directories
-    3. Runs: docker compose up -d --build
-
-  SERVICES STARTED:
-
-    forgery_api      http://localhost:8000       Forgery Detection REST API
-    forgery_api docs http://localhost:8000/docs  Swagger interactive docs
-    forgery_mlflow   http://localhost:5000       MLflow experiment UI
-    forgery_grafana  http://localhost:3000       Log search & visualization
-    forgery_loki     internal                   Log storage (no browser UI)
-    forgery_promtail internal                   Log shipper (tails logs/)
-
-  All services restart automatically unless stopped.
-
-  OTHER COMMANDS:
-      make down        stop everything
-      make restart     rebuild + restart
-      make status      show container health
-      make logs        tail all container stdout
-
-
-================================================================================
-  STEP 13.5 — GRAFANA LOG VISUALIZATION
-================================================================================
-
-  Open: http://localhost:3000  (no login required)
-  Go to: Left sidebar → Explore (compass icon)
-  Datasource is already set to Loki.
-
-  USEFUL LOGQL QUERIES:
-
-    All training logs:
-        {script="train_classifier"}
-
-    All errors across all scripts:
-        {app="forgery-detection", level="ERROR"}
-
-    Training lines containing the AUC metric:
-        {script="train_classifier"} |= "VlAUC"
-
-    Live tail while training is running:
-        {script="train_classifier"} | live
-
-    Kaggle download progress:
-        {script="kaggle_download"}
-
-    Evaluation results:
-        {script="evaluate"}
-
-  FILTER LABELS:
-    script: train_classifier | evaluate | kaggle_download | demo | inference
-    level:  INFO | WARNING | ERROR
-
-  NOTE: Grafana only shows logs from AFTER the monitoring stack was started.
-  Older log files are still readable in the logs/ folder directly.
 
 
 ================================================================================
@@ -511,26 +466,27 @@ and running system.
   make venv
   source forgery_env/bin/activate
   make install
-  # fill in KAGGLE_USERNAME and KAGGLE_KEY in .env
+  # fill KAGGLE_USERNAME + KAGGLE_KEY in .env
 
   Data pipeline:
   ──────────────
-  make download                     ← Step 4   (download Kaggle datasets)
-  make generate                     ← Step 5   (synthetic forgeries)
-  make split                        ← Step 6   (train/val/test split)
+  make download                    ← fetch Kaggle datasets
+  make generate                    ← 1000 synthetic forgeries
+  make split                       ← train/val/test split
 
-  Training + tracking:
-  ────────────────────
-  make train                        ← Step 8   (auto-logs to MLflow)
-  make evaluate                     ← Step 9   (test metrics + MLflow)
-  make demo                         ← Step 10  (visual dashboards)
+  Training (on host):
+  ───────────────────
+  make up                          ← start all services first (logs go to Grafana)
+  make train                       ← CNN training, auto-logs to MLflow
+  make evaluate                    ← test metrics + MLflow upload
 
-  Start everything:
-  ─────────────────
-  make up                           ← Step 13  (API + MLflow + Grafana)
-  # API      → http://localhost:8000
-  # MLflow   → http://localhost:5000
-  # Grafana  → http://localhost:3000
+  Access everything:
+  ──────────────────
+  http://localhost:7860            ← Demo app (upload documents here)
+  http://localhost:8000            ← REST API
+  http://localhost:5000            ← MLflow (experiment tracking)
+  http://localhost:3001            ← Docs site
+  http://localhost:3000            ← Grafana (training logs)
 
 
 ================================================================================
@@ -544,68 +500,51 @@ and running system.
     → Check .env has KAGGLE_USERNAME and KAGGLE_KEY
     → Run from the project root folder
 
-  "Classifier model not found"
-    → Run: make train   (creates models/classifier.pth)
+  "Classifier model not found" in demo sidebar
+    → Run: make train   (saves models/classifier.pth)
+    → Upload an image in the demo — it detects the model automatically
 
-  Training loss not decreasing
-    → Dataset too small. Use --limit 1000 in kaggle_download.py
-    → Verify both train/real/ and train/forged/ have images
+  Training appears frozen
+    → It is running — tqdm bars show per-batch progress
+    → If you see no output at all, check logs/train_classifier/
 
-  Out of memory during training
+  Out of memory
     → Lower batch_size in config.yaml (try 8 or 4)
 
-  "ModuleNotFoundError: No module named 'src'"
-    → Make sure PYTHONPATH=. is in .env
-    → Or: export PYTHONPATH=.
+  Docker service failing
+    → make status    to see which container failed
+    → docker logs forgery_<name> --tail 30    to see the error
 
-  Very slow training on CPU
-    → Expected. ResNet18 + 1000 images + 15 epochs ≈ 30–60 min
-    → Set epochs: 5 first to confirm the pipeline works
-    → For real training, use Google Colab (free T4 GPU) — same code, no changes
-
-  Docker services not starting
-    → Run: make status   to see which container failed
-    → Run: make logs     to see error output
-
-  MLflow UI is empty (no runs)
-    → Confirm make up ran successfully and mlflow.db exists
-    → Training must complete at least one epoch to create a run
+  MLflow UI empty
+    → Training must complete at least one epoch
+    → Confirm mlflow.db exists in project root
 
   Grafana shows no logs
-    → The stack must be running (make up) BEFORE you run training scripts
-    → Promtail only picks up new lines written after it started
-    → Existing .log files in logs/ are still readable manually
+    → Start make up BEFORE running training
+    → Promtail only ships lines written after it starts
+
+  Mintlify docs fail to start
+    → Container uses Node 20 — first start downloads mintlify (~60 seconds)
+    → make logs to watch progress
 
 
 ================================================================================
   WHERE TO FIND LOGS
 ================================================================================
 
-  Every script writes a timestamped file to logs/<script_name>/.
-  Each run creates a new file — old runs are never overwritten.
-
   logs/
-  ├── kaggle_download/
-  │   └── kaggle_download_2026-05-06_09-00-00.log
-  ├── generate_synthetic_data/
-  │   └── generate_synthetic_data_2026-05-06_10-00-00.log
-  ├── prepare_dataset/
-  │   └── prepare_dataset_2026-05-06_10-30-00.log
   ├── train_classifier/
-  │   └── train_classifier_2026-05-06_10-31-00.log
   ├── evaluate/
-  │   └── evaluate_2026-05-06_14-30-00.log
+  ├── kaggle_download/
+  ├── generate_synthetic_data/
+  ├── prepare_dataset/
   ├── inference/
-  │   └── inference_2026-05-06_15-00-00.log
   ├── demo/
-  │   └── demo_2026-05-06_15-10-00.log
+  ├── api/
   └── train_yolo/
-      └── train_yolo_2026-05-06_16-00-00.log
 
-  Console output  →  INFO level and above
-  Log file        →  DEBUG level and above (full tracebacks, skipped files)
-
-  In Grafana     →  search/filter all logs via LogQL
-                    http://localhost:3000  (after make up)
+  Console output → INFO level
+  Log file       → DEBUG level (full tracebacks)
+  Grafana        → http://localhost:3000  (after make up)
 
 ================================================================================
