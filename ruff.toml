@@ -1,0 +1,25 @@
+line-length = 110
+target-version = "py310"
+exclude = [
+    "forgery_env",
+    ".venv",
+    "site",
+    "mlruns",
+    "mlartifacts",
+    "mintlify-docs",
+    "data",
+    "models",
+    "logs",
+    "demo.py",
+    "scripts/generate_synthetic_data.py",
+    "kaggle_download.py",
+]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E501",  # line length (handled by formatter when used)
+    "E741",  # ambiguous variable name (we use `l` rarely)
+    "B008",  # function calls in defaults (FastAPI Depends pattern)
+    "UP006", # tuple[...] vs Tuple[...] — keep py<3.9 friendly only where used
+]

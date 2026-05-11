@@ -1,0 +1,95 @@
+---
+title: Installation
+description: Set up the environment and install all dependencies.
+---
+
+## Requirements
+
+| Requirement | Minimum | Recommended |
+|-------------|---------|-------------|
+| Python | 3.10 | 3.11+ |
+| RAM | 8 GB | 16 GB |
+| Disk | 10 GB | 20 GB |
+| GPU | Not required | NVIDIA CUDA |
+| Docker | 24+ | Latest |
+
+---
+
+## 1. Clone the repository
+
+```bash
+git clone https://github.com/your-username/document-forgery-detection.git
+cd document-forgery-detection
+```
+
+---
+
+## 2. Create virtual environment
+
+```bash
+make venv
+```
+
+Activate it — required every time you open a new terminal:
+
+<Tabs>
+  <Tab title="Linux / Mac">
+    ```bash
+    source forgery_env/bin/activate
+    ```
+  </Tab>
+  <Tab title="Windows">
+    ```bash
+    forgery_env\Scripts\activate
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  You'll see `(forgery_env)` at the start of your prompt when the environment is active.
+</Note>
+
+---
+
+## 3. Install dependencies
+
+```bash
+make install
+```
+
+Installs: PyTorch, OpenCV, FastAPI, YOLOv8, MLflow, Gradio, Kaggle API, scikit-learn, TensorBoard, python-dotenv, and all other packages.
+
+<Info>
+  **Takes 3–10 minutes** depending on your internet connection. PyTorch is the largest package (~2 GB).
+</Info>
+
+---
+
+## 4. Configure credentials
+
+Edit `.env` in the project root:
+
+```env
+KAGGLE_USERNAME=your_kaggle_username
+KAGGLE_KEY=your_kaggle_api_key
+PYTHONPATH=.
+```
+
+**Get your Kaggle key:**
+1. Go to [kaggle.com/settings](https://www.kaggle.com/settings)
+2. Account → API → **Create New Token**
+3. Copy the values from `kaggle.json` into `.env`
+
+<Warning>
+  `.env` is listed in `.gitignore` and will never be committed. Your keys are safe.
+</Warning>
+
+---
+
+## 5. Verify installation
+
+```bash
+python -c "import torch, cv2, ultralytics, fastapi, gradio, mlflow; print('All OK')"
+```
+
+Expected: `All OK`

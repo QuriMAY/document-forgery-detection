@@ -1,0 +1,67 @@
+---
+title: YOLO Detector
+description: Fine-tune YOLOv8 to detect signatures and stamps.
+---
+
+<Note>
+  YOLO is **optional**. The API and demo app work without it — they just won't include bounding box detections.
+</Note>
+
+## Label data with Roboflow
+
+<Steps>
+  <Step title="Create a Roboflow project">
+    Sign up at [roboflow.com](https://roboflow.com) (free tier).
+    Create new project → **Object Detection**.
+  </Step>
+  <Step title="Upload and label">
+    Upload your document images. Draw bounding boxes:
+    - Signatures → class `signature`
+    - Stamps → class `stamp`
+
+    Aim for at least **200–300 labelled images**.
+  </Step>
+  <Step title="Export">
+    Export → **YOLOv8 format** → Download ZIP.
+    Extract it — note the path to `data.yaml`.
+  </Step>
+</Steps>
+
+---
+
+## Train
+
+```bash
+python train_yolo.py --data path/to/data.yaml
+python train_yolo.py --data path/to/data.yaml --device cpu
+```
+
+Best weights are automatically copied to `models/best.pt` after training.
+
+---
+
+## Verify it loaded
+
+```bash
+curl http://localhost:8000/health
+```
+
+```json
+{
+  "status": "running",
+  "models": {
+    "classifier": true,
+    "yolo": true
+  }
+}
+```
+
+---
+
+## Base model options
+
+| Model | Size | Speed | Accuracy |
+|-------|------|-------|----------|
+| `yolov8n.pt` | Tiny | ⚡⚡⚡ | Lower |
+| `yolov8s.pt` | Small | ⚡⚡ | Good |
+| `yolov8m.pt` | Medium | ⚡ | Better |

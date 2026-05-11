@@ -1,0 +1,139 @@
+---
+title: Troubleshooting
+description: Common errors and how to fix them.
+---
+
+## Installation
+
+<AccordionGroup>
+  <Accordion title="Docker build fails with exit code 100">
+    Package names changed in Debian Bookworm. The Dockerfile already uses the correct names.
+    Pull the latest code and retry:
+    ```bash
+    git pull
+    docker system prune -f
+    make up
+    ```
+  </Accordion>
+
+  <Accordion title="ModuleNotFoundError: No module named 'src'">
+    `PYTHONPATH` is not set. Check `.env`:
+    ```env
+    PYTHONPATH=.
+    ```
+    Or set manually:
+    ```bash
+    export PYTHONPATH=.   # Linux/Mac
+    set PYTHONPATH=.      # Windows
+    ```
+  </Accordion>
+
+  <Accordion title="pip install is very slow or times out">
+    ```bash
+    forgery_env/bin/pip install --upgrade pip
+    pip install --timeout 300 -r requirements.txt
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Data
+
+<AccordionGroup>
+  <Accordion title="No images found in data/real/">
+    Run `make download` first, or manually copy images into `data/real/`.
+  </Accordion>
+
+  <Accordion title="Kaggle credentials not found">
+    Check `.env` has `KAGGLE_USERNAME` and `KAGGLE_KEY` set correctly.
+    Run scripts from the project root directory (where `.env` lives).
+  </Accordion>
+
+  <Accordion title="KaggleApi import error">
+    Kaggle v2 renamed `KaggleApiExtended` to `KaggleApi`. Pull the latest code — the import is already fixed.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Training
+
+<AccordionGroup>
+  <Accordion title="Training appears frozen with no output">
+    Pull latest code — `tqdm` progress bars have been added:
+    ```
+    Epochs:  47%|████████          | 7/15 [best=0.847]
+      train: 100%|████████████████| 350/350 [loss=0.324]
+    ```
+  </Accordion>
+
+  <Accordion title="Training loss not decreasing">
+    - Dataset too small. Use `--limit 1000` or more in `kaggle_download.py`.
+    - Check `data/train/real/` and `data/train/forged/` both have images.
+    - Try a lower learning rate: `lr: 0.0003`.
+  </Accordion>
+
+  <Accordion title="Out of memory during training">
+    Lower `batch_size` in `config.yaml`:
+    ```yaml
+    batch_size: 8   # or 4
+    ```
+  </Accordion>
+
+  <Accordion title="FutureWarning about torch.cuda.amp">
+    Pull the latest code — updated to use `torch.amp` (new API).
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Services
+
+<AccordionGroup>
+  <Accordion title="make up fails or container keeps restarting">
+    Check which container failed and why:
+    ```bash
+    make status
+    docker logs forgery_api --tail 30
+    ```
+    Clean rebuild:
+    ```bash
+    make down
+    docker system prune -f
+    make up
+    ```
+  </Accordion>
+
+  <Accordion title="Port already in use">
+    Find and kill the process:
+    ```bash
+    lsof -i :8000    # or :7860 :5000 :3000
+    kill -9 <PID>
+    ```
+  </Accordion>
+
+  <Accordion title="MLflow UI shows no runs">
+    - Confirm `mlflow.db` exists in the project root.
+    - Training must complete at least one epoch.
+    - Run training from the project root.
+  </Accordion>
+
+  <Accordion title="Grafana shows no logs">
+    `make up` must be running **before** training scripts.
+    Promtail only ships lines written after it started.
+    Existing log files in `logs/` are readable directly.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Getting help
+
+If the issue persists, check the log file — it contains DEBUG-level details:
+
+```
+logs/<script_name>/script_YYYY-MM-DD_HH-MM-SS.log
+```
+
+Open an issue on [GitHub](https://github.com/your-username/document-forgery-detection/issues).

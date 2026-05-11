@@ -1,0 +1,74 @@
+---
+title: Generate Forgeries
+description: Create synthetic forged documents using copy-move and splice attacks.
+---
+
+Real forgery datasets are rare and restricted. This step generates them programmatically.
+
+## Attack types
+
+<CardGroup cols={2}>
+  <Card title="Copy-Move" icon="copy">
+    A region is copied from the **same document** and pasted elsewhere — possibly rotated or scaled.
+
+    Simulates: duplicating a stamp, covering text with a copied signature.
+  </Card>
+  <Card title="Splice" icon="scissors">
+    A region from a **different document** is pasted onto the target.
+
+    Simulates: replacing a signature, inserting a fake stamp.
+  </Card>
+</CardGroup>
+
+Both attack types include optional **feathered edge blending** to make forgeries more realistic.
+
+---
+
+## Command
+
+```bash
+make generate
+```
+
+Which runs:
+
+```bash
+python scripts/generate_synthetic_data.py \
+    --real-dir   data/real    \
+    --donor-dir  data/patches \
+    --num-forged 1000
+```
+
+### Parameters
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--real-dir` | required | Authentic images from Download step |
+| `--donor-dir` | optional | Signature images for splice attacks |
+| `--num-forged` | same as real count | Forgeries to generate |
+| `--output-dir` | `data/generated` | Output root directory |
+| `--seed` | `42` | Reproducibility seed |
+
+---
+
+## Output
+
+```
+data/generated/
+├── real/    ← copies of your authentic images
+└── forged/  ← newly created forgeries
+```
+
+---
+
+## Recommended sizes
+
+| Size | Real + Forged | Use case |
+|------|--------------|----------|
+| Minimum | 300 + 300 | Pipeline verification |
+| Good | 1 000 + 1 000 | First real model |
+| Best | 3 000 + 3 000 | Production quality |
+
+<Warning>
+  Keep real and forged counts roughly equal. The training script handles class imbalance with weighted loss, but extreme imbalance (>5:1) hurts performance.
+</Warning>

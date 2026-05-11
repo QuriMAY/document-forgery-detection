@@ -51,10 +51,10 @@ def evaluate(config: dict, args):
     ])
 
     dataset = datasets.ImageFolder(args.test_dir, transform=transform)
-    loader  = DataLoader(dataset, batch_size=64, shuffle=False,
-                         num_workers=min(4, os.cpu_count() or 1))
+    loader  = DataLoader(dataset, batch_size=64, shuffle=False, num_workers=0)
 
     class_names = [k for k, _ in sorted(dataset.class_to_idx.items(), key=lambda x: x[1])]
+    forged_idx = dataset.class_to_idx["forged"]
     logger.info(f"Test dir      : {args.test_dir}")
     logger.info(f"Model         : {args.model}")
     logger.info(f"Test images   : {len(dataset)}")
@@ -76,10 +76,12 @@ def evaluate(config: dict, args):
             images = images.to(device)
             with autocast(device_type=device.type, enabled=use_amp):
                 logits = model(images)
-            probs = torch.softmax(logits, dim=1)[:, 1].cpu().numpy()
-            all_preds.extend((probs > 0.5).astype(int))
+            probs = torch.softmax(logits, dim=1)
+            forged_probs = probs[:, forged_idx].cpu().numpy()
+            preds = logits.argmax(dim=1).cpu().numpy()
+            all_preds.extend(preds)
             all_labels.extend(labels.numpy())
-            all_probs.extend(probs)
+            all_probs.extend(forged_probs)
 
     all_preds  = np.array(all_preds)
     all_labels = np.array(all_labels)
@@ -87,8 +89,9 @@ def evaluate(config: dict, args):
 
     # ---- metrics ----
     report = classification_report(all_labels, all_preds, target_names=class_names, digits=4)
-    auc    = roc_auc_score(all_labels, all_probs)
-    ap     = average_precision_score(all_labels, all_probs)
+    forged_labels = (all_labels == forged_idx).astype(int)
+    auc    = roc_auc_score(forged_labels, all_probs)
+    ap     = average_precision_score(forged_labels, all_probs)
     acc    = float(np.mean(all_preds == all_labels))
 
     print("\n" + "=" * 60)
@@ -128,20 +131,23 @@ def evaluate(config: dict, args):
     ax.set_xlabel("Recall"); ax.set_ylabel("Precision"); ax.set_title("Precision-Recall Curve")
     ax.legend(); plt.tight_layout(); plt.savefig(out / "pr_curve.png", dpi=150); plt.close()
 
-    # ---- MLflow — log test metrics + plots into the latest training run ----
-    mlflow.set_tracking_uri("sqlite:///mlflow.db")
-    mlflow.set_experiment("forgery-classifier")
+    # ---- MLflow — log test metrics + plots when the tracking DB is usable ----
+    try:
+        mlflow.set_tracking_uri("sqlite:///mlflow.db")
+        mlflow.set_experiment("forgery-classifier")
 
-    with mlflow.start_run(run_name="evaluation"):
-        mlflow.log_metrics({
-            "test_auc":      round(auc, 6),
-            "test_avg_prec": round(ap,  6),
-            "test_accuracy": round(acc, 6),
-        })
-        mlflow.log_artifact(str(out / "confusion_matrix.png"), artifact_path="evaluation")
-        mlflow.log_artifact(str(out / "roc_curve.png"),        artifact_path="evaluation")
-        mlflow.log_artifact(str(out / "pr_curve.png"),         artifact_path="evaluation")
-        mlflow.log_artifact(str(report_path),                  artifact_path="evaluation")
+        with mlflow.start_run(run_name="evaluation"):
+            mlflow.log_metrics({
+                "test_auc":      round(auc, 6),
+                "test_avg_prec": round(ap,  6),
+                "test_accuracy": round(acc, 6),
+            })
+            mlflow.log_artifact(str(out / "confusion_matrix.png"), artifact_path="evaluation")
+            mlflow.log_artifact(str(out / "roc_curve.png"),        artifact_path="evaluation")
+            mlflow.log_artifact(str(out / "pr_curve.png"),         artifact_path="evaluation")
+            mlflow.log_artifact(str(report_path),                  artifact_path="evaluation")
+    except Exception as exc:
+        logger.warning(f"MLflow logging skipped: {exc}")
 
     logger.info("=" * 70)
     logger.info("Evaluation complete.")

@@ -180,30 +180,18 @@ def create_forged(image: np.ndarray) -> tuple[np.ndarray, dict]:
 
 def analyze(image_path: str, ela: ELAAnalyzer, detector: DocumentDetector,
             classifier, cfg: dict) -> dict:
-    ela_score = ela.get_forgery_score(image_path)
-    regions   = ela.get_suspicious_regions(image_path)
-    dets      = detector.detect(image_path)
-
-    cls_score = None
-    if classifier:
-        cls_score = classifier.predict(image_path)["forgery_probability"]
-
-    inf = cfg.get("inference", {})
-    ew, cw = inf.get("ela_weight", 0.35), inf.get("classifier_weight", 0.65)
-    thr = inf.get("forgery_threshold", 0.5)
-    combined = (ew * ela_score + cw * cls_score) if cls_score is not None else ela_score
-
-    gap = abs(combined - thr)
-    confidence = "high" if gap > 0.3 else "medium" if gap > 0.15 else "low"
-
+    # Delegate to the canonical pipeline; remap keys to the legacy demo schema
+    # consumed by plot_analysis / plot_comparison below.
+    from src.analysis import analyze as _analyze
+    r = _analyze(image_path, ela, detector, classifier, cfg)
     return {
-        "ela_score":   round(ela_score, 4),
-        "cls_score":   round(cls_score, 4) if cls_score is not None else None,
-        "combined":    round(combined, 4),
-        "is_forged":   combined > thr,
-        "confidence":  confidence,
-        "regions":     regions[:5],
-        "detections":  dets,
+        "ela_score":   round(r["scores"]["ela"], 4),
+        "cls_score":   round(r["scores"]["classifier"], 4) if r["scores"]["classifier"] is not None else None,
+        "combined":    r["forgery_probability"],
+        "is_forged":   r["is_forged"],
+        "confidence":  r["confidence"],
+        "regions":     r["suspicious_regions"],
+        "detections":  r["detections"],
     }
 
 
@@ -617,14 +605,15 @@ def main():
                   save_path=str(save_dir / "dashboard_forged.png"))
 
     # ── Comparison figure ─────────────────────────────────────────────────
-    if args.compare or True:   # always produce the comparison
+    if args.compare:
         plot_comparison(real_path, forged_path, real_result, forged_result,
                         save_path=str(save_dir / "comparison.png"))
 
     logger.info(f"\nAll figures saved to  {save_dir}/")
     logger.info("  dashboard_authentic.png")
     logger.info("  dashboard_forged.png")
-    logger.info("  comparison.png")
+    if args.compare:
+        logger.info("  comparison.png")
     logger.info("  sample_authentic.jpg")
     logger.info("  sample_forged.jpg")
 

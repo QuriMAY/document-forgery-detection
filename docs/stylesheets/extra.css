@@ -1,0 +1,37 @@
+/* ── Hero section on home page ─────────────────────────────────── */
+.hero {
+  padding: 4rem 2rem 3rem;
+  text-align: center;
+  background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #1565c0 100%);
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  color: white;
+}
+.hero h1 { font-size: 2.6rem; font-weight: 800; margin: 0 0 1rem; color: white; }
+.hero p  { font-size: 1.15rem; opacity: 0.9; max-width: 640px; margin: 0 auto 1.8rem; }
+.hero-badges { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.hero-badges img { height: 22px; }
+
+/* ── Feature cards ─────────────────────────────────────────────── */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.2rem;
+  margin: 2rem 0;
+}
+.card {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 10px;
+  padding: 1.4rem 1.6rem;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.card:hover { box-shadow: 0 6px 20px rgba(0,0,0,.12); transform: translateY(-2px); }
+.card-icon  { font-size: 2rem; margin-bottom: 0.5rem; }
+.card h3    { margin: 0 0 0.4rem; font-size: 1rem; }
+.card p     { margin: 0; font-size: 0.875rem; opacity: 0.8; }
+
+/* ── Service URL table highlight ───────────────────────────────── */
+.service-url { font-family: var(--md-code-font); font-size: 0.85rem; }
+
+/* ── Wider content on reference pages ─────────────────────────── */
+.md-content { max-width: 900px; }

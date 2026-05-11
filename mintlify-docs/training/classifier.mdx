@@ -1,0 +1,104 @@
+---
+title: CNN Classifier
+description: Train a ResNet to classify documents as real or forged.
+---
+
+## Architecture
+
+```
+Input (224×224 RGB)
+       │
+  ResNet backbone  ← pretrained on ImageNet
+       │
+  Global Average Pooling
+       │
+  Dropout(0.3) → Linear(→256) → ReLU → Dropout(0.2) → Linear(→2)
+       │
+  Softmax → [P(real), P(forged)]
+```
+
+---
+
+## Command
+
+```bash
+make train
+
+# Or with options
+python train_classifier.py --device cpu
+python train_classifier.py --resume models/classifier.pth   # continue from checkpoint
+```
+
+---
+
+## Live progress
+
+```
+Epochs:  47%|██████████████          | 7/15 [08:23, best=0.8471]
+  train: 100%|████████████████████████| 350/350 [loss=0.3241]
+    val: 100%|████████████████████████|  75/75  [loss=0.4102]
+Epoch   7/15 | TrLoss 0.3241 TrAcc 0.8712 | VlAUC 0.9021
+  ✓ Best model saved  (AUC=0.9021)
+```
+
+### AUC interpretation
+
+| AUC | Quality |
+|-----|---------|
+| 0.70 – 0.79 | Acceptable |
+| 0.80 – 0.89 | Good |
+| 0.90+ | Excellent |
+
+AUC is the primary metric — best AUC triggers a model checkpoint save.
+
+---
+
+## Training features
+
+<CardGroup cols={2}>
+  <Card title="Optimiser" icon="gears">
+    AdamW with weight decay. OneCycleLR scheduler — warmup then cosine decay.
+  </Card>
+  <Card title="Class Balance" icon="scale-balanced">
+    CrossEntropyLoss with per-class weights computed from the training set distribution.
+  </Card>
+  <Card title="Augmentation" icon="wand-magic-sparkles">
+    Random crop, flip, colour jitter, rotation, grayscale, random erasing.
+  </Card>
+  <Card title="Early Stopping" icon="hand">
+    Stops training if validation loss does not improve for `patience` epochs.
+  </Card>
+</CardGroup>
+
+---
+
+## Expected training time
+
+| Hardware | Images | Epochs | Time |
+|----------|--------|--------|------|
+| CPU | 1 000 | 15 | 30–60 min |
+| CPU | 3 000 | 30 | 3–6 hours |
+| NVIDIA GPU | 3 000 | 30 | 10–20 min |
+
+<Tip>
+  Set `epochs: 5` in `config.yaml` for your first run to verify the full pipeline works before a long training session.
+</Tip>
+
+---
+
+## TensorBoard
+
+```bash
+tensorboard --logdir runs/classifier
+# Open http://localhost:6006
+```
+
+---
+
+## After training
+
+```bash
+make evaluate          # test-set metrics + MLflow artifact upload
+```
+
+Produces `evaluation/confusion_matrix.png`, `roc_curve.png`, `pr_curve.png`, and `report.txt`.

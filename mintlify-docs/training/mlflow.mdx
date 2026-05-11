@@ -1,0 +1,82 @@
+---
+title: Experiment Tracking
+description: MLflow logs every training run automatically — no extra commands needed.
+---
+
+## Open the UI
+
+MLflow starts automatically with `make up` at [localhost:5000](http://localhost:5000).
+
+```bash
+# Or run standalone on the host
+mlflow ui --backend-store-uri sqlite:///mlflow.db
+```
+
+---
+
+## What is logged automatically
+
+<CardGroup cols={2}>
+  <Card title="Parameters" icon="sliders">
+    `backbone` · `batch_size` · `lr` · `weight_decay` · `epochs` · `image_size` · `device` · `train_images` · `val_images`
+  </Card>
+  <Card title="Metrics (every epoch)" icon="chart-line">
+    `train_loss` · `train_acc` · `train_f1` · `val_loss` · `val_acc` · `val_f1` · `val_auc` · `lr` · `epoch_time_s`
+  </Card>
+  <Card title="Artifacts" icon="box-archive">
+    `checkpoints/classifier.pth` — saved on every new best AUC
+
+    Evaluation plots after `make evaluate`
+  </Card>
+  <Card title="Tags" icon="tag">
+    `early_stopped` · `pytorch_version`
+  </Card>
+</CardGroup>
+
+---
+
+## Using the UI
+
+### Find your best model
+
+1. Open the **forgery-classifier** experiment
+2. Click the **`val_auc`** column header to sort descending
+3. Top row = best model
+
+### Compare two runs
+
+1. Tick checkboxes on two runs
+2. Click **Compare**
+3. Get overlaid metric charts per epoch
+
+### Filter runs
+
+```
+metrics.val_auc > 0.85
+params.backbone = "resnet50"
+params.lr < 0.001
+```
+
+### Download a checkpoint
+
+1. Click a run name → **Artifacts** tab
+2. `checkpoints/classifier.pth` → Download
+
+---
+
+## Run naming
+
+Runs are named automatically: `resnet18_bs16_lr0.001`
+
+Format: `{backbone}_bs{batch_size}_lr{lr}`
+
+---
+
+## Storage
+
+| File | Contents |
+|------|----------|
+| `mlflow.db` | SQLite — all run metadata and metrics |
+| `mlartifacts/` | Binary artifacts — model weights and plots |
+
+Both are in `.gitignore` and should not be committed.

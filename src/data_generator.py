@@ -2,7 +2,6 @@ import logging
 import random
 import shutil
 from pathlib import Path
-from typing import Optional
 
 import cv2
 import numpy as np
@@ -137,8 +136,8 @@ class SyntheticForgeryGenerator:
         self,
         real_dir: str,
         output_dir: str,
-        num_forged: Optional[int] = None,
-        donor_dir: Optional[str] = None,
+        num_forged: int | None = None,
+        donor_dir: str | None = None,
     ) -> dict:
         real_dir = Path(real_dir)
         output_dir = Path(output_dir)
@@ -166,11 +165,17 @@ class SyntheticForgeryGenerator:
         for i in range(num_forged):
             try:
                 src = random.choice(real_images)
-                image = cv2.cvtColor(cv2.imread(str(src)), cv2.COLOR_BGR2RGB)
+                raw = cv2.imread(str(src))
+                if raw is None:
+                    raise OSError(f"cv2 could not read {src}")
+                image = cv2.cvtColor(raw, cv2.COLOR_BGR2RGB)
 
                 if donor_images and random.random() > 0.5:
                     donor_path = random.choice(donor_images)
-                    donor = cv2.cvtColor(cv2.imread(str(donor_path)), cv2.COLOR_BGR2RGB)
+                    donor_raw = cv2.imread(str(donor_path))
+                    if donor_raw is None:
+                        raise OSError(f"cv2 could not read {donor_path}")
+                    donor = cv2.cvtColor(donor_raw, cv2.COLOR_BGR2RGB)
                     forged, _ = self.splice(image, donor)
                 else:
                     forged, _ = self.copy_move(image)
@@ -179,8 +184,8 @@ class SyntheticForgeryGenerator:
                 Image.fromarray(forged).save(str(out), quality=85)
                 generated += 1
 
-            except Exception as exc:
-                logger.warning(f"Sample {i} failed: {exc}")
+            except (OSError, ValueError, cv2.error) as exc:
+                logger.warning("Sample %d failed: %s", i, exc)
                 errors += 1
 
         logger.info(f"Generated {generated} forged images ({errors} errors)")

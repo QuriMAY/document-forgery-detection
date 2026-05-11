@@ -38,8 +38,16 @@ evaluation/
 # ── Development tools (not needed inside the container) ───────────────────────
 notebooks/
 .vscode/
+.idea/
 .pytest_cache/
 .ipynb_checkpoints/
+tests/
+.github/
+.ruff_cache/
+.mypy_cache/
+demo_output/
+site/
+.venv/
 
 # ── Secrets (inject via docker run -e or docker-compose env_file) ─────────────
 .env
@@ -50,6 +58,12 @@ notebooks/
 
 # ── Monitoring stack configs (not needed inside the API/MLflow containers) ───
 monitoring/
+
+# ── Docs (not needed inside the API/MLflow containers) ───────────────────────
+mintlify-docs/
+docs/
+mkdocs.yml
+requirements-docs.txt
 
 # ── Documentation ─────────────────────────────────────────────────────────────
 STEPS.txt

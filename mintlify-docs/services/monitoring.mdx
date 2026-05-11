@@ -1,0 +1,68 @@
+---
+title: Log Monitoring
+description: Grafana + Loki gives you searchable, filterable logs from every script.
+---
+
+**URL:** [localhost:3000](http://localhost:3000) — no login required.
+
+## How it works
+
+```
+Training scripts       Promtail            Loki          Grafana
+──────────────────     ────────            ────          ───────
+train_classifier  →    tails logs/   →     stores   →   web UI
+kaggle_download   →    parses format →     indexed  →   LogQL
+scripts/evaluate  →    labels lines  →     by label →   explore
+```
+
+Promtail watches `./logs/**/*.log` on the host and ships every new line to Loki with parsed labels.
+
+---
+
+## Labels
+
+| Label | Values |
+|-------|--------|
+| `script` | `train_classifier` · `evaluate` · `kaggle_download` · `demo` · `inference` · `prepare_dataset` · `generate_synthetic_data` |
+| `level` | `INFO` · `WARNING` · `ERROR` |
+
+---
+
+## LogQL queries
+
+Open **Explore** → select **Loki** → type:
+
+```logql
+# All training logs
+{script="train_classifier"}
+
+# Live tail while training is running
+{script="train_classifier"} | live
+
+# Lines containing AUC metric
+{script="train_classifier"} |= "VlAUC"
+
+# All errors across every script
+{app="forgery-detection", level="ERROR"}
+
+# Kaggle download progress
+{script="kaggle_download"}
+
+# Evaluation results
+{script="evaluate"}
+```
+
+---
+
+## Important
+
+<Warning>
+  Start `make up` **before** running training scripts. Promtail only ships lines written after it starts.
+
+  ```bash
+  make up      # start the stack first
+  make train   # then train
+  ```
+
+  Older `.log` files in `logs/` are still readable directly on disk.
+</Warning>

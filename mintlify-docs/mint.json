@@ -1,0 +1,115 @@
+{
+  "name": "Forgery Detection",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "favicon": "/logo/favicon.svg",
+  "colors": {
+    "primary": "#4F46E5",
+    "light": "#818CF8",
+    "dark": "#3730A3",
+    "anchors": {
+      "from": "#4F46E5",
+      "to": "#7C3AED"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/your-username/document-forgery-detection"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get Started",
+    "url": "/getting-started/quickstart"
+  },
+  "tabs": [
+    {
+      "name": "Guides",
+      "url": "getting-started"
+    },
+    {
+      "name": "Training",
+      "url": "training"
+    },
+    {
+      "name": "Services",
+      "url": "services"
+    },
+    {
+      "name": "Reference",
+      "url": "reference"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "API Docs",
+      "icon": "rectangle-terminal",
+      "url": "http://localhost:8000/docs"
+    },
+    {
+      "name": "MLflow UI",
+      "icon": "chart-line",
+      "url": "http://localhost:5000"
+    },
+    {
+      "name": "Grafana",
+      "icon": "bars",
+      "url": "http://localhost:3000"
+    },
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/your-username/document-forgery-detection"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Overview",
+      "pages": [
+        "introduction",
+        "getting-started/quickstart",
+        "getting-started/installation",
+        "getting-started/configuration"
+      ]
+    },
+    {
+      "group": "Data Pipeline",
+      "pages": [
+        "data-pipeline/download",
+        "data-pipeline/generate",
+        "data-pipeline/prepare"
+      ]
+    },
+    {
+      "group": "Training",
+      "pages": [
+        "training/classifier",
+        "training/yolo",
+        "training/mlflow"
+      ]
+    },
+    {
+      "group": "Services",
+      "pages": [
+        "services/overview",
+        "services/api",
+        "services/demo",
+        "services/monitoring"
+      ]
+    },
+    {
+      "group": "Reference",
+      "pages": [
+        "reference/architecture",
+        "reference/configuration",
+        "reference/cli",
+        "reference/troubleshooting"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/your-username/document-forgery-detection"
+  }
+}

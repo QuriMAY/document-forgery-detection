@@ -1,0 +1,64 @@
+---
+title: Download Datasets
+description: Fetch authentic documents and signatures from Kaggle automatically.
+---
+
+## Datasets
+
+<CardGroup cols={2}>
+  <Card title="Real Documents → data/real/" icon="file-lines">
+    **shaz13/real-world-documents-collections**
+    Invoices, letters, forms (~400 MB)
+
+    **patrickaudriaz/tobacco3482dataset**
+    Scanned office documents (~1.2 GB)
+  </Card>
+  <Card title="Signatures → data/patches/" icon="pen-nib">
+    **robinreni/signature-verification-dataset**
+    Genuine + forged signatures
+
+    **ishanikathuria/handwritten-signatures**
+    Handwritten signatures
+  </Card>
+</CardGroup>
+
+Patches are used as **splice attack donors** — pasted onto real documents to create forgeries.
+
+---
+
+## Commands
+
+```bash
+# Download everything
+make download
+
+# Or use the script directly
+python kaggle_download.py --all                                    # all datasets
+python kaggle_download.py --documents                              # only real docs
+python kaggle_download.py --signatures                             # only signatures
+python kaggle_download.py --all --limit 300                        # 300 per dataset (fast test)
+python kaggle_download.py --all --skip patrickaudriaz/tobacco3482dataset
+```
+
+---
+
+## Download times
+
+| Mode | Approx. time |
+|------|-------------|
+| `--limit 300` | 2–5 minutes |
+| `--documents` only | 10–20 minutes |
+| Full `--all` | 20–60 minutes |
+
+---
+
+## Logs
+
+```
+logs/kaggle_download/kaggle_download_YYYY-MM-DD_HH-MM-SS.log
+```
+
+<Info>
+  If `make up` is running, logs appear in real time in Grafana at [localhost:3000](http://localhost:3000).
+  Use the query: `{script="kaggle_download"}`
+</Info>

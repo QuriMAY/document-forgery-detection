@@ -1,5 +1,7 @@
 # ── Python ───────────────────────────────────────────────────────────────────
 forgery_env/
+.venv/
+venv/
 **/__pycache__/
 *.pyc
 *.pyo
@@ -9,18 +11,25 @@ forgery_env/
 dist/
 build/
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
-# ── Jupyter ───────────────────────────────────────────────────────────────────
+# ── Coverage ─────────────────────────────────────────────────────────────────
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# ── Jupyter ──────────────────────────────────────────────────────────────────
 .ipynb_checkpoints/
 
-# ── Model weights ─────────────────────────────────────────────────────────────
-# Too large for git — copy manually or use DVC
+# ── Model weights ────────────────────────────────────────────────────────────
+# Too large for git — distribute via GitHub Release + `make fetch-weights`.
 models/*.pt
 models/*.pth
 models/*.onnx
 
-# ── Datasets ──────────────────────────────────────────────────────────────────
-# All downloaded and generated data — too large for git
+# ── Datasets ─────────────────────────────────────────────────────────────────
 data/real/
 data/forged/
 data/patches/
@@ -28,51 +37,55 @@ data/generated/
 data/train/
 data/val/
 data/test/
-# data/sample_images/ is intentionally tracked (small reference images)
+data/_staging/
+# data/sample_images/ is intentionally tracked — committed images live here.
+!data/sample_images/
+!data/sample_images/**
 
-# ── Runtime artifacts ─────────────────────────────────────────────────────────
-# temp/ contents ignored; .gitkeep preserved so the empty folder stays in git
+# ── Runtime artifacts ────────────────────────────────────────────────────────
 temp/*
 !temp/.gitkeep
-
-# TensorBoard event files
 runs/
-
-# Evaluation output — plots + report.txt from scripts/evaluate.py
 evaluation/
-
-# Demo output — dashboards from demo.py
 demo_output/
 
-# Log files — all scripts write into logs/<script_name>/
+# ── Logs ─────────────────────────────────────────────────────────────────────
 logs/
 *.log
 
-# ── MLflow ────────────────────────────────────────────────────────────────────
-# Local experiment database and artifact store — never commit
+# ── MLflow ───────────────────────────────────────────────────────────────────
 mlflow.db
+mlflow.db-journal
 mlruns/
 mlartifacts/
 
-# ── Docker ────────────────────────────────────────────────────────────────────
-# Local overrides (different ports, volumes, debug flags) — never commit
+# ── Docker ───────────────────────────────────────────────────────────────────
 docker-compose.override.yml
 
-# ── Grafana / Loki runtime volumes ────────────────────────────────────────────
-# Config files in monitoring/ ARE tracked; runtime data is not
+# ── Grafana / Loki runtime ───────────────────────────────────────────────────
 monitoring/grafana/data/
 monitoring/loki/data/
 
-# ── VS Code user settings ─────────────────────────────────────────────────────
-# Uncomment the line below to stop tracking VS Code settings
-# .vscode/
+# ── Node / Mintlify ──────────────────────────────────────────────────────────
+node_modules/
+mintlify-docs/.mintlify/
 
-# ── Secrets ───────────────────────────────────────────────────────────────────
+# ── MkDocs build ─────────────────────────────────────────────────────────────
+site/
+
+# ── Secrets ──────────────────────────────────────────────────────────────────
 .env
+.env.local
+.env.*.local
 
-# ── OS ────────────────────────────────────────────────────────────────────────
+# ── Editor / IDE ─────────────────────────────────────────────────────────────
+.idea/
+.claude/
+
+# ── OS ───────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 *.swp
 *.swo
+*.swn
 *.bak
